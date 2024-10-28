@@ -31,7 +31,7 @@
 ! setups mesh adjacency array to search element neighbors for point searches
 
   use constants, only: myrank, &
-    NDIM,NGLLX,NGLLY,NGLLZ,MIDX,MIDY,MIDZ,IMAIN,CUSTOM_REAL,MAX_STRING_LEN
+    NGLLX,NGLLY,NGLLZ,MIDX,MIDY,MIDZ,IMAIN,MAX_STRING_LEN
 
   use generate_databases_par, only: NSPEC_AB,NGLOB_AB,ibool,NPROC,prname
 
