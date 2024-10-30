@@ -255,7 +255,8 @@
     else
       ! no neighbors
       ! warning
-      print *,'*** Warning: found mesh element with no neighbors : slice ',myrank,' - element ',ispec_ref,' ***'
+      print *,'*** Warning: found mesh element with no neighbors : slice ',myrank, &
+              ' - element ',ispec_ref,'out of',NSPEC_AB,' ***'
     endif
 
     ! again loop to get neighbors of neighbors
