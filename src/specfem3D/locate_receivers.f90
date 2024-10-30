@@ -283,6 +283,37 @@
   call bcast_all_dp(nu_rec,NDIM*NDIM*nrec)
   call bcast_all_dp(final_distance,nrec)
 
+  ! checks if valid receiver element
+  if (myrank == 0) then
+    ! locate point might return a zero ispec if point outside/above mesh
+    do irec = 1,nrec
+      ispec = ispec_selected_rec(irec)
+      ! checks if valid
+      if (ispec < 1 .or. ispec > NSPEC_AB) then
+        ! invalid element
+        print *,'Error locating station # ',irec,'    ',trim(network_name(irec)),'    ',trim(station_name(irec))
+        if (SUPPRESS_UTM_PROJECTION) then
+          print *,'     original x: ',sngl(stutm_x(irec))
+          print *,'     original y: ',sngl(stutm_y(irec))
+        else
+          print *,'     original UTM x: ',sngl(stutm_x(irec))
+          print *,'     original UTM y: ',sngl(stutm_y(irec))
+        endif
+        if (USE_SOURCES_RECEIVERS_Z) then
+          print *,'     original z: ',sngl(stbur(irec))
+        else
+          print *,'     original depth: ',sngl(stbur(irec)),' m'
+        endif
+        print *,'  only found invalid element: slice ',islice_selected_rec(irec)
+        print *,'                              ispec ',ispec_selected_rec(irec)
+        print *,'                              domain ',idomain(irec)
+        print *,'                              final_distance: ',final_distance(irec)
+        call exit_MPI(myrank,'Error locating receiver')
+      endif
+    enddo
+  endif
+  call synchronize_all()
+
   ! warning if receiver in C-PML region
   allocate(is_CPML_rec(nrec),stat=ier)
   if (ier /= 0) call exit_MPI(myrank,'Error allocating is_CPML_rec array')
@@ -298,6 +329,7 @@
   do irec = 1,nrec
     if (islice_selected_rec(irec) == myrank) then
       ispec = ispec_selected_rec(irec)
+      ! check if PML element
       if (is_CPML(ispec)) then
         is_CPML_rec(irec) = .true.
         ! debug
@@ -315,8 +347,8 @@
 
       ! checks stations location
       if (final_distance(irec) == HUGEVAL) then
-        write(IMAIN,*) 'error locating station # ',irec,'    ',trim(network_name(irec)),'    ',trim(station_name(irec))
-        call exit_MPI(myrank,'error locating receiver')
+        write(IMAIN,*) 'Error locating station # ',irec,'    ',trim(network_name(irec)),'    ',trim(station_name(irec))
+        call exit_MPI(myrank,'Error locating receiver')
       endif
 
       ! limits user output if too many receivers
