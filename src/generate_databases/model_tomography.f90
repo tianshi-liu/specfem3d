@@ -121,7 +121,7 @@
   ! allocate( vp_tomography(1:nrecord) ,stat=ier)
   ! if (ier /= 0) stop 'error allocating array vp_tomography'
   !endif
-  !call bcast_all_cr(vp_tomography,size(vp_tomography))
+  !call bcast_all_cr(vp_tomography,size(vp_tomography,kind=4))
 
   ! synchronizes processes
   call synchronize_all()

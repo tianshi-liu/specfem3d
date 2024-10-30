@@ -31,7 +31,7 @@
 ! setups mesh adjacency array to search element neighbors for point searches
 
   use constants, only: myrank, &
-    NDIM,NGLLX,NGLLY,NGLLZ,MIDX,MIDY,MIDZ,IMAIN,CUSTOM_REAL,MAX_STRING_LEN
+    NGLLX,NGLLY,NGLLZ,MIDX,MIDY,MIDZ,IMAIN,MAX_STRING_LEN
 
   use generate_databases_par, only: NSPEC_AB,NGLOB_AB,ibool,NPROC,prname
 
@@ -255,7 +255,8 @@
     else
       ! no neighbors
       ! warning
-      print *,'*** Warning: found mesh element with no neighbors : slice ',myrank,' - element ',ispec_ref,' ***'
+      print *,'*** Warning: found mesh element with no neighbors : slice ',myrank, &
+              ' - element ',ispec_ref,'out of',NSPEC_AB,' ***'
     endif
 
     ! again loop to get neighbors of neighbors
@@ -377,7 +378,7 @@
   endif
 
   ! check if element has neighbors
-  ! note: in case of a fault in this slice (splitting nodes) and/or scotch paritioning
+  ! note: in case of a fault in this slice (splitting nodes) and/or scotch partitioning
   !       it can happen that an element has no neighbors
   if (NPROC == 1 .and. (.not. ANY_FAULT_IN_THIS_PROC)) then
     ! checks if neighbors were found

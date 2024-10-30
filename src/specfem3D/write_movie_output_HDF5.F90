@@ -201,7 +201,7 @@ contains
   fname_h5_data_shake = trim(OUTPUT_FILES) // "/shakemap.h5"
 
   ! get the offset info from main rank
-  call bcast_all_i(faces_surface_offset,size(faces_surface_offset))
+  call bcast_all_i(faces_surface_offset,size(faces_surface_offset,kind=4))
 
   if (myrank == 0) then
     size_surf_array = size(store_val_x_all)
@@ -474,7 +474,7 @@ contains
 
   ! get the offset info from main rank
   if (it == NTSTEP_BETWEEN_FRAMES) then
-    call bcast_all_i(faces_surface_offset,size(faces_surface_offset))
+    call bcast_all_i(faces_surface_offset,size(faces_surface_offset,kind=4))
   endif
 
   if (myrank == 0) then
