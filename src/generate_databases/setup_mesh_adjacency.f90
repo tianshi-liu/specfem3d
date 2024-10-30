@@ -377,7 +377,7 @@
   endif
 
   ! check if element has neighbors
-  ! note: in case of a fault in this slice (splitting nodes) and/or scotch paritioning
+  ! note: in case of a fault in this slice (splitting nodes) and/or scotch partitioning
   !       it can happen that an element has no neighbors
   if (NPROC == 1 .and. (.not. ANY_FAULT_IN_THIS_PROC)) then
     ! checks if neighbors were found

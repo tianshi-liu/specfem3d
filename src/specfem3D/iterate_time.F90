@@ -418,9 +418,9 @@
 
       if (ATTENUATION) then
         call transfer_rmemory_from_device(Mesh_pointer,R_xx,R_yy,R_xy,R_xz,R_yz, &
-                                          R_trace,size(R_xx))
+                                          R_trace,size(R_xx,kind=4))
         call transfer_strain_from_device(Mesh_pointer,epsilondev_xx,epsilondev_yy,epsilondev_xy,epsilondev_xz,epsilondev_yz, &
-                                         epsilondev_trace,size(epsilondev_xx))
+                                         epsilondev_trace,size(epsilondev_xx,kind=4))
 
       endif
     endif

@@ -145,7 +145,7 @@
                                        epsilondev_xx,epsilondev_yy,epsilondev_xy, &
                                        epsilondev_xz,epsilondev_yz, &
                                        ATTENUATION, &
-                                       size(R_xx), &
+                                       size(R_xx,kind=4), &
                                        R_xx,R_yy,R_xy,R_xz,R_yz, &
                                        factor_common, &
                                        R_trace,epsilondev_trace, &
@@ -171,7 +171,7 @@
                                           b_epsilondev_xx,b_epsilondev_yy,b_epsilondev_xy, &
                                           b_epsilondev_xz,b_epsilondev_yz, &
                                           b_epsilon_trace_over_3, &
-                                          size(R_xx), &
+                                          size(R_xx,kind=4), &
                                           b_R_xx,b_R_yy,b_R_xy,b_R_xz,b_R_yz, &
                                           b_R_trace,b_epsilondev_trace, &
                                           b_alphaval,b_betaval,b_gammaval, &
