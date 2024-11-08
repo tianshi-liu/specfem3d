@@ -77,7 +77,7 @@ __global__ void compute_stacey_acoustic_kernel(field* potential_dot_acoustic,
       cpl = sqrt( kappal / rhol );
 
       // velocity
-      if (gravity ){
+      if (gravity){
         // daniel: TODO - check gravity and stacey condition here...
         // uses a potential definition of: s = grad(chi)
         vel = potential_dot_acoustic[iglob] / rhol ;
@@ -166,7 +166,7 @@ __global__ void compute_stacey_acoustic_single_kernel(field* potential_dot_acous
         cpl = sqrt( kappal / rhol );
 
         // velocity
-        if (gravity ){
+        if (gravity){
           // daniel: TODO - check gravity and stacey condition here...
           // uses a potential definition of: s = grad(chi)
           vel = potential_dot_acoustic[iglob] / rhol ;
@@ -238,7 +238,7 @@ __global__ void compute_stacey_acoustic_undoatt_kernel( field* potential_dot_aco
       cpl = sqrt( kappal / rhol );
 
       // velocity
-      if (gravity ){
+      if (gravity){
         // daniel: TODO - check gravity and stacey condition here...
         // uses a potential definition of: s = grad(chi)
         vel = potential_dot_acoustic[iglob] / rhol ;

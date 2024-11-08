@@ -1773,7 +1773,7 @@ Kernel_2_noatt_iso_grav_impl(int nb_blocks_to_compute,
   sigma_zx = sigma_xz;
   sigma_zy = sigma_yz;
 
-  if (gravity ){
+  if (gravity){
     //  computes non-symmetric terms for gravity
     compute_element_gravity(tx,working_element,&iglob,d_minus_g,d_minus_deriv_gravity,
                             d_rhostore,wgll_cube,jacobianl,
@@ -2128,7 +2128,7 @@ Kernel_2_noatt_ani_impl(int nb_blocks_to_compute,
   sigma_zx = sigma_xz;
   sigma_zy = sigma_yz;
 
-  if (gravity ){
+  if (gravity){
     //  computes non-symmetric terms for gravity
     compute_element_gravity(tx,working_element,&iglob,d_minus_g,d_minus_deriv_gravity,
                             d_rhostore,wgll_cube,jacobianl,
@@ -2167,7 +2167,7 @@ Kernel_2_noatt_ani_impl(int nb_blocks_to_compute,
   sum_terms3 = - (fac1*tempz1l + fac2*tempz2l + fac3*tempz3l);
 
   // adds gravity term
-  if (gravity ){
+  if (gravity){
     sum_terms1 += rho_s_H1;
     sum_terms2 += rho_s_H2;
     sum_terms3 += rho_s_H3;
@@ -3148,7 +3148,7 @@ Kernel_2_att_org_impl(int nb_blocks_to_compute,
     sigma_zx = sigma_xz;
     sigma_zy = sigma_yz;
 
-    if (gravity ){
+    if (gravity){
       //  computes non-symmetric terms for gravity
       compute_element_gravity(tx,working_element,&iglob,d_minus_g,d_minus_deriv_gravity,
                               d_rhostore,wgll_cube,jacobianl,
@@ -3287,7 +3287,7 @@ Kernel_2_att_org_impl(int nb_blocks_to_compute,
     sum_terms3 = - (fac1*tempz1l + fac2*tempz2l + fac3*tempz3l);
 
     // adds gravity term
-    if (gravity ){
+    if (gravity){
       sum_terms1 += rho_s_H1;
       sum_terms2 += rho_s_H2;
       sum_terms3 += rho_s_H3;

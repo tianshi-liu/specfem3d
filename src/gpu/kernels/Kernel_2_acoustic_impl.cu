@@ -81,7 +81,7 @@ extern realw_texture d_hprime_xx_tex;
 //   - hiding memory latency: to minimize waiting times to retrieve a memory value from global memory, we put
 //                some more calculations into the same code block before calling syncthreads(). this should help the
 //                compiler to move independent calculations to wherever it can overlap it with memory access operations.
-//                note, especially the if (gravity )-block locations are very sensitive
+//                note, especially the if (gravity)-block locations are very sensitive
 //                for optimal register usage and compiler optimizations
 //
 
@@ -222,7 +222,7 @@ Kernel_2_acoustic_impl(const int nb_blocks_to_compute,
 // + 1 float * 125 threads = 500 BYTE
 
   // gravity
-  if (gravity ) kappa_invl = 1.f / d_kappastore[working_element*NGLL3 + tx];
+  if (gravity) kappa_invl = 1.f / d_kappastore[working_element*NGLL3 + tx];
 
 
   // local index
@@ -340,7 +340,7 @@ Kernel_2_acoustic_impl(const int nb_blocks_to_compute,
     }
   }
   // pre-computes gravity sum term
-  if (gravity ){
+  if (gravity){
     // uses potential definition: s = grad(chi)
     //
     // gravity term: 1/kappa grad(chi) * g
@@ -724,7 +724,7 @@ Kernel_2_acoustic_single_impl(const int nb_blocks_to_compute,
   }
 
   // pre-computes gravity sum term
-  if (gravity ){
+  if (gravity){
     // uses potential definition: s = grad(chi)
     //
     // gravity term: 1/kappa grad(chi) * g

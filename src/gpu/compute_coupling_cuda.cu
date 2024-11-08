@@ -248,7 +248,7 @@ void FC_FUNC_(compute_coupling_ocean_cuda,
 
   // safety check
   if (*FORWARD_OR_ADJOINT != 1 && *FORWARD_OR_ADJOINT != 3) {
-    exit_on_error("Error invalid FORWARD_OR_ADJOINT in update_displacement_ac_cuda() routine");
+    exit_on_error("Error invalid FORWARD_OR_ADJOINT in compute_coupling_ocean_cuda() routine");
   }
 
   // checks if anything to do
