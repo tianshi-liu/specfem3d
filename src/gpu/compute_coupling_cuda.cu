@@ -35,6 +35,9 @@
 
 /* ----------------------------------------------------------------------------------------------- */
 
+// coupling direction: elastic wavefield/domain -> acoustic wavefield/domain
+//                                                 (updates acoustic potential_dot_dot wavefield)
+
 extern EXTERN_LANG
 void FC_FUNC_(compute_coupling_ac_el_cuda,
               COMPUTE_COUPLING_AC_EL_CUDA)(long* Mesh_pointer,
@@ -130,6 +133,9 @@ void FC_FUNC_(compute_coupling_ac_el_cuda,
 // ELASTIC - ACOUSTIC coupling
 
 /* ----------------------------------------------------------------------------------------------- */
+
+// coupling direction: acoustic wavefield/domain -> elastic wavefield/domain
+//                                                  (updates elastic acceleration wavefield)
 
 extern EXTERN_LANG
 void FC_FUNC_(compute_coupling_el_ac_cuda,
