@@ -1615,23 +1615,32 @@ TRACE("prepare_cleanup_device");
     if (mp->save_seismograms_p) gpuFree(mp->d_seismograms_p);
     gpuFree(mp->d_nu_rec);
     gpuFree(mp->d_ispec_selected_rec_loc);
-    }
-    gpuFree(mp->d_ispec_selected_rec);
+  }
+  gpuFree(mp->d_ispec_selected_rec);
 
   // ACOUSTIC arrays
   if (*ACOUSTIC_SIMULATION ){
     gpuFree(mp->d_potential_acoustic);
     gpuFree(mp->d_potential_dot_acoustic);
     gpuFree(mp->d_potential_dot_dot_acoustic);
-    gpuFree(mp->d_send_potential_dot_dot_buffer);
+    if (mp->size_mpi_buffer_potential > 0){
+      gpuFree(mp->d_send_potential_dot_dot_buffer);
+      if (mp->simulation_type == 3) gpuFree(mp->d_b_send_potential_dot_dot_buffer);
+    }
     gpuFree(mp->d_rmass_acoustic);
     gpuFree(mp->d_kappastore);
     gpuFree(mp->d_phase_ispec_inner_acoustic);
     if (*NOISE_TOMOGRAPHY == 0){
-      gpuFree(mp->d_free_surface_ispec);
-      gpuFree(mp->d_free_surface_ijk);
+      if (mp->num_free_surface_faces > 0){
+        gpuFree(mp->d_free_surface_ispec);
+        gpuFree(mp->d_free_surface_ijk);
+      }
     }
-    if (mp->stacey_absorbing_conditions) gpuFree(mp->d_b_absorb_potential);
+    if (mp->stacey_absorbing_conditions && mp->d_num_abs_boundary_faces > 0) {
+      if (mp->simulation_type == 3 || ( mp->simulation_type == 1 && mp->save_forward )) {
+        gpuFree(mp->d_b_absorb_potential);
+      }
+    }
     if (mp->simulation_type == 3) {
       gpuFree(mp->d_b_potential_acoustic);
       gpuFree(mp->d_b_potential_dot_acoustic);
@@ -1651,8 +1660,10 @@ TRACE("prepare_cleanup_device");
     gpuFree(mp->d_displ);
     gpuFree(mp->d_veloc);
     gpuFree(mp->d_accel);
-    gpuFree(mp->d_send_accel_buffer);
-    if (mp->simulation_type == 3) gpuFree(mp->d_b_send_accel_buffer);
+    if (mp->size_mpi_buffer > 0){
+      gpuFree(mp->d_send_accel_buffer);
+      if (mp->simulation_type == 3) gpuFree(mp->d_b_send_accel_buffer);
+    }
     gpuFree(mp->d_rmassx);
     gpuFree(mp->d_rmassy);
     gpuFree(mp->d_rmassz);
@@ -1660,8 +1671,9 @@ TRACE("prepare_cleanup_device");
     if (mp->stacey_absorbing_conditions && mp->d_num_abs_boundary_faces > 0){
       gpuFree(mp->d_rho_vp);
       gpuFree(mp->d_rho_vs);
-      if (mp->simulation_type == 3 || ( mp->simulation_type == 1 && mp->save_forward ))
-          gpuFree(mp->d_b_absorb_field);
+      if (mp->simulation_type == 3 || ( mp->simulation_type == 1 && mp->save_forward )) {
+        gpuFree(mp->d_b_absorb_field);
+      }
     }
     if (mp->pml_conditions && mp->NSPEC_CPML > 0){
       gpuFree(mp->d_CPML_to_spec);
