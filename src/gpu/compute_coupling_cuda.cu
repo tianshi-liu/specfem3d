@@ -93,7 +93,7 @@ void FC_FUNC_(compute_coupling_ac_el_cuda,
   // launches GPU kernel
 #ifdef USE_CUDA
   if (run_cuda){
-    compute_coupling_acoustic_el_kernel<<<grid,threads>>>(displ,
+    compute_coupling_acoustic_el_kernel<<<grid,threads,0,mp->compute_stream>>>(displ,
                                                           potential_dot_dot,
                                                           num_coupling_ac_el_faces,
                                                           mp->d_coupling_ac_el_ispec,
@@ -107,7 +107,7 @@ void FC_FUNC_(compute_coupling_ac_el_cuda,
 #endif
 #ifdef USE_HIP
   if (run_hip){
-    hipLaunchKernelGGL(compute_coupling_acoustic_el_kernel, dim3(grid), dim3(threads), 0, 0,
+    hipLaunchKernelGGL(compute_coupling_acoustic_el_kernel, dim3(grid), dim3(threads), 0, mp->compute_stream,
                                                             displ,
                                                             potential_dot_dot,
                                                             num_coupling_ac_el_faces,
@@ -195,7 +195,7 @@ void FC_FUNC_(compute_coupling_el_ac_cuda,
   // launches GPU kernel
 #ifdef USE_CUDA
   if (run_cuda){
-    compute_coupling_elastic_ac_kernel<<<grid,threads>>>(potential_dot_dot,
+    compute_coupling_elastic_ac_kernel<<<grid,threads,0,mp->compute_stream>>>(potential_dot_dot,
                                                          accel,
                                                          num_coupling_ac_el_faces,
                                                          mp->d_coupling_ac_el_ispec,
@@ -213,7 +213,7 @@ void FC_FUNC_(compute_coupling_el_ac_cuda,
 #endif
 #ifdef USE_HIP
   if (run_hip){
-    hipLaunchKernelGGL(compute_coupling_elastic_ac_kernel, dim3(grid), dim3(threads), 0, 0,
+    hipLaunchKernelGGL(compute_coupling_elastic_ac_kernel, dim3(grid), dim3(threads), 0, mp->compute_stream,
                                                            potential_dot_dot,
                                                            accel,
                                                            num_coupling_ac_el_faces,

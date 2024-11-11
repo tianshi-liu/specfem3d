@@ -136,13 +136,14 @@ typedef double realw;
 #ifdef USE_HIP
 // for HIP-CPU installation
 #if defined(__HIP_CPU_RT__)
+//#pragma message ("\nCompiling with: HIP-CPU enabled\n")
 // forces __forceinline__ keyword to be inline to avoid "duplicate symbol.." linking errors
 #if defined(__forceinline__)
 #undef __forceinline__
 #endif
-#define __forceinline__ inline
+//#define __forceinline__ inline
 // or
-//#define __forceinline__ __attribute__((always_inline)) inline
+#define __forceinline__ __attribute__((always_inline)) inline
 #endif
 #endif
 
