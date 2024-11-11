@@ -112,15 +112,33 @@ Kernel_2_acoustic_impl(const int nb_blocks_to_compute,
                        realw_const_p d_hprime_xx,
                        realw_const_p d_hprimewgll_xx,
                        realw_const_p d_wgllwgll_xy,realw_const_p d_wgllwgll_xz,realw_const_p d_wgllwgll_yz,
-                       realw* d_rhostore,
+                       realw_const_p d_rhostore,
                        const int use_mesh_coloring_gpu,
                        const int gravity,
                        realw_const_p minus_g,
                        realw* d_kappastore,
                        realw_const_p wgll_cube){
 
+// arithmetic intensity: ratio of number-of-arithmetic-operations / number-of-bytes-accessed-on-DRAM
+//
+// hand-counts on floating-point operations: counts addition/subtraction/multiplication/division
+//                                           no counts for operations on indices in for-loops (compiler will likely unrool loops)
+//
+//                                           counts accesses to global memory, but no shared memory or register loads/stores
+//                                           float has 4 bytes
+
+// counts: for simulations without gravity, without mesh_coloring
+//         counts floating-point operations (FLOP) per thread
+//         counts global memory accesses in bytes (BYTES) per block
+// 2 FLOP
+//
+// 0 BYTES
+
   // block-id == number of local element id in phase_ispec array
   int bx = blockIdx.y*gridDim.x+blockIdx.x;
+
+  // checks if anything to do
+  if (bx >= nb_blocks_to_compute) return;
 
   // thread-id == GLL node id
   // note: use only NGLL^3 = 125 active threads, plus 3 inactive/ghost threads,
@@ -128,8 +146,24 @@ Kernel_2_acoustic_impl(const int nb_blocks_to_compute,
   //       to avoid execution branching and the need of registers to store an active state variable,
   //       the thread ids are put in valid range
   int tx = threadIdx.x;
+  // limits thread ids to range [0,125-1]
+  if (tx >= NGLL3) tx = NGLL3-1;
 
-  int I,J,K;
+// counts:
+// + 1 FLOP
+//
+// + 0 BYTE
+
+  // local index
+  int K = (tx/NGLL2);
+  int J = ((tx-K*NGLL2)/NGLLX);
+  int I = (tx-K*NGLL2-J*NGLLX);
+
+// counts:
+// + 8 FLOP
+//
+// + 0 BYTES
+  
   int iglob,offset;
   int working_element,ispec_irreg;
 
@@ -153,31 +187,6 @@ Kernel_2_acoustic_impl(const int nb_blocks_to_compute,
   __shared__ realw sh_hprime_xx[NGLL2];
   __shared__ realw sh_hprimewgll_xx[NGLL2];
 
-// arithmetic intensity: ratio of number-of-arithmetic-operations / number-of-bytes-accessed-on-DRAM
-//
-// hand-counts on floating-point operations: counts addition/subtraction/multiplication/division
-//                                           no counts for operations on indices in for-loops (compiler will likely unrool loops)
-//
-//                                           counts accesses to global memory, but no shared memory or register loads/stores
-//                                           float has 4 bytes
-
-// counts: for simulations without gravity, without mesh_coloring
-//         counts floating-point operations (FLOP) per thread
-//         counts global memory accesses in bytes (BYTES) per block
-// 2 FLOP
-//
-// 0 BYTES
-
-  // checks if anything to do
-  if (bx >= nb_blocks_to_compute) return;
-
-  // limits thread ids to range [0,125-1]
-  if (tx >= NGLL3) tx = NGLL3-1;
-
-// counts:
-// + 1 FLOP
-//
-// + 0 BYTE
 
   // spectral-element id
 #ifdef USE_MESH_COLORING_GPU
@@ -192,9 +201,11 @@ Kernel_2_acoustic_impl(const int nb_blocks_to_compute,
   }
 #endif
 
+  ispec_irreg = d_irregular_element_number[working_element] - 1;
+
   // local padded index
   offset = working_element*NGLL3_PADDED + tx;
-  ispec_irreg = d_irregular_element_number[working_element] - 1;
+
   // global index
   iglob = d_ibool[offset] - 1;
 
@@ -224,17 +235,6 @@ Kernel_2_acoustic_impl(const int nb_blocks_to_compute,
   // gravity
   if (gravity) kappa_invl = 1.f / d_kappastore[working_element*NGLL3 + tx];
 
-
-  // local index
-  K = (tx/NGLL2);
-  J = ((tx-K*NGLL2)/NGLLX);
-  I = (tx-K*NGLL2-J*NGLLX);
-
-// counts:
-// + 8 FLOP
-//
-// + 0 BYTES
-
   // note: loads mesh values here to give compiler possibility to overlap memory fetches with some computations;
   //       arguments defined as realw* instead of const realw* __restrict__ to avoid that the compiler
   //       loads all memory by texture loads (arrays accesses are coalescent, thus no need for texture reads)
@@ -258,6 +258,7 @@ Kernel_2_acoustic_impl(const int nb_blocks_to_compute,
   }
 
   // density (reciproc)
+  //rhol = get_global_cr( &d_rhostore[working_element*NGLL3_PADDED + tx] );
   rho_invl = 1.f / d_rhostore[offset];
 
 // counts:
@@ -345,7 +346,13 @@ Kernel_2_acoustic_impl(const int nb_blocks_to_compute,
     //
     // gravity term: 1/kappa grad(chi) * g
     // assumes that g only acts in (negative) z-direction
-    gravity_term = minus_g[iglob] * kappa_invl * jacobianl * wgll_cube[tx] * dpotentialdzl;
+    if (threadIdx.x < NGLL3) {
+      if (ispec_irreg >= 0){
+        gravity_term = minus_g[iglob] * kappa_invl * jacobianl * wgll_cube[tx] * dpotentialdzl;
+      }else{
+        gravity_term = minus_g[iglob] * kappa_invl * jacobian_regular * wgll_cube[tx] * xix_regular*temp3l;
+      }
+    }
   }
 
 // counts:
@@ -527,7 +534,7 @@ template __global__ void Kernel_2_acoustic_impl<1>(const int nb_blocks_to_comput
                                                    realw_const_p d_hprime_xx,
                                                    realw_const_p d_hprimewgll_xx,
                                                    realw_const_p d_wgllwgll_xy,realw_const_p d_wgllwgll_xz,realw_const_p d_wgllwgll_yz,
-                                                   realw* d_rhostore,
+                                                   realw_const_p d_rhostore,
                                                    const int use_mesh_coloring_gpu,
                                                    const int gravity,
                                                    realw_const_p minus_g,
@@ -560,7 +567,7 @@ Kernel_2_acoustic_single_impl(const int nb_blocks_to_compute,
                               realw_const_p d_hprime_xx,
                               realw_const_p d_hprimewgll_xx,
                               realw_const_p d_wgllwgll_xy,realw_const_p d_wgllwgll_xz,realw_const_p d_wgllwgll_yz,
-                              realw* d_rhostore,
+                              realw_const_p d_rhostore,
                               const int use_mesh_coloring_gpu,
                               const int gravity,
                               realw_const_p minus_g,
@@ -670,6 +677,7 @@ Kernel_2_acoustic_single_impl(const int nb_blocks_to_compute,
   }
 
   // density (reciproc)
+  //rhol = get_global_cr( &d_rhostore[working_element*NGLL3_PADDED + tx] );
   rho_invl = 1.f / d_rhostore[offset];
 
   // loads hprime into shared memory
@@ -729,7 +737,13 @@ Kernel_2_acoustic_single_impl(const int nb_blocks_to_compute,
     //
     // gravity term: 1/kappa grad(chi) * g
     // assumes that g only acts in (negative) z-direction
-    gravity_term = minus_g[iglob] * kappa_invl * jacobianl * wgll_cube[tx] * dpotentialdzl;
+    if (threadIdx.x < NGLL3) {
+      if (ispec_irreg >= 0){
+        gravity_term = minus_g[iglob] * kappa_invl * jacobianl * wgll_cube[tx] * dpotentialdzl;
+      }else{
+        gravity_term = minus_g[iglob] * kappa_invl * jacobian_regular * wgll_cube[tx] * xix_regular*temp3l;
+      }
+    }
   }
 
   // synchronize all the threads (one thread for each of the NGLL grid points of the
