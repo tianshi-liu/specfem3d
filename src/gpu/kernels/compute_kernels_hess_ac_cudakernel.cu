@@ -78,18 +78,18 @@ __global__ void compute_kernels_hess_ac_cudakernel(int* ispec_is_acoustic,
       // copy field values
       scalar_field_accel[ijk] = potential_dot_dot_acoustic[iglob];
       scalar_field_b_accel[ijk] = b_potential_dot_dot_acoustic[iglob];
-      scalar_field_b_veloc[ijk] =  b_potential_dot_acoustic[iglob];
+      scalar_field_b_veloc[ijk] = b_potential_dot_acoustic[iglob];
     }
   }
 
   // synchronizes threads
   __syncthreads();
 
-  if (active ){
+  if (active){
     field accel_loc[3];
     field b_accel_loc[3];
     field b_veloc_loc[3];
-    realw rhol, kappal;
+    realw rhol, kappal_inv;
 
     // gets material parameter
     rhol = rhostore[ijk_ispec_padded];
@@ -126,11 +126,8 @@ __global__ void compute_kernels_hess_ac_cudakernel(int* ispec_is_acoustic,
     hess_rho_ac_kl[ijk_ispec] += deltat * rhol * sum(b_veloc_loc[0]*b_veloc_loc[0] +
                                                      b_veloc_loc[1]*b_veloc_loc[1] +
                                                      b_veloc_loc[2]*b_veloc_loc[2]);
-    kappal = kappastore[ijk_ispec];
-    hess_kappa_ac_kl[ijk_ispec] += deltat / kappal * sum(  b_potential_dot_acoustic[iglob]
-                                                         * b_potential_dot_acoustic[iglob]);
-     //
-
+    kappal_inv = 1.0f / kappastore[ijk_ispec];
+    hess_kappa_ac_kl[ijk_ispec] += deltat * kappal_inv * sum(b_potential_dot_acoustic[iglob] * b_potential_dot_acoustic[iglob]);
   } // active
 }
 

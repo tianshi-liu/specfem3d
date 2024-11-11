@@ -75,6 +75,7 @@ __global__ void compute_kernels_acoustic_kernel(int* ispec_is_acoustic,
 
       // copy field values
       iglob = d_ibool[ijk_ispec_padded] - 1;
+
       scalar_field_displ[ijk] = b_potential_acoustic[iglob];
       scalar_field_accel[ijk] = potential_acoustic[iglob];
     }
@@ -83,7 +84,7 @@ __global__ void compute_kernels_acoustic_kernel(int* ispec_is_acoustic,
   // synchronizes threads
   __syncthreads();
 
-  if (active ){
+  if (active){
     field accel_loc[3];
     field b_displ_loc[3];
     realw rhol;

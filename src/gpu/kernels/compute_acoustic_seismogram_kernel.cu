@@ -167,7 +167,6 @@ __global__ void compute_acoustic_seismogram_kernel(int nrec_local,
         realw duxdyl,duxdzl,duydxl,duydzl,duzdxl,duzdyl;
 
         int ispec_irreg = d_irregular_element_number[ispec] - 1;
-
         if (ispec_irreg >= 0){
           // irregular element
           int offset_irreg = ispec_irreg * NGLL3_PADDED + tx;
@@ -321,7 +320,7 @@ __global__ void compute_acoustic_vectorial_seismogram_kernel(int nrec_local,
   realw etaxl, etayl, etazl;
   realw gammaxl, gammayl, gammazl;
   realw dpotentialdxl, dpotentialdyl, dpotentialdzl;
-  int ispec, iglob, ispec_irreg;
+  int ispec, iglob;
 
   /*
   // debug
@@ -358,6 +357,8 @@ __global__ void compute_acoustic_vectorial_seismogram_kernel(int nrec_local,
   }
   */
 
+  if (irec_local >= nrec_local) return;
+
   s_temp1[tx] = 0.0f;
   s_temp2[tx] = 0.0f;
   s_temp3[tx] = 0.0f;
@@ -367,14 +368,11 @@ __global__ void compute_acoustic_vectorial_seismogram_kernel(int nrec_local,
   int J = ((tx-K*NGLL2)/NGLLX);
   int I = (tx-K*NGLL2-J*NGLLX);
 
-  if (irec_local >= nrec_local) return;
-
   if (tx < NGLL3) {
     ispec = ispec_selected_rec_loc[irec_local] - 1;
-    ispec_irreg = d_irregular_element_number[ispec] - 1;
 
     // nothing to do if we are in elastic element
-    if (d_ispec_is_acoustic[ispec] == 0) {return;}
+    if (d_ispec_is_acoustic[ispec] == 0) { return; }
 
     int offset = INDEX4_PADDED(NGLLX,NGLLX,NGLLX,I,J,K,ispec);
 
@@ -412,7 +410,8 @@ __global__ void compute_acoustic_vectorial_seismogram_kernel(int nrec_local,
       temp3l += s_dummy_loc[l*NGLL2+J*NGLLX+I] * sh_hprime_xx[l*NGLLX+K];
     }
 
-   if (ispec_irreg >= 0){
+    int ispec_irreg = d_irregular_element_number[ispec] - 1;
+    if (ispec_irreg >= 0){
       //irregular element
       int offset_irreg = INDEX4_PADDED(NGLLX,NGLLX,NGLLX,I,J,K,ispec_irreg);
       xixl = d_xix[offset_irreg];
@@ -429,8 +428,7 @@ __global__ void compute_acoustic_vectorial_seismogram_kernel(int nrec_local,
       dpotentialdxl = xixl*temp1l + etaxl*temp2l + gammaxl*temp3l;
       dpotentialdyl = xiyl*temp1l + etayl*temp2l + gammayl*temp3l;
       dpotentialdzl = xizl*temp1l + etazl*temp2l + gammazl*temp3l;
-    }
-    else{
+    }else{
       // compute derivatives of ux, uy and uz with respect to x, y and z
       // derivatives of potential
       dpotentialdxl = xix_regular*temp1l;
