@@ -163,7 +163,7 @@ Kernel_2_acoustic_impl(const int nb_blocks_to_compute,
 // + 8 FLOP
 //
 // + 0 BYTES
-  
+
   int iglob,offset;
   int working_element,ispec_irreg;
 

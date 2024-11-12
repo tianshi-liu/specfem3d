@@ -72,7 +72,7 @@ __global__ void compute_stacey_elastic_kernel(realw* veloc,
 
       // gets associated velocity
 
-      vx = veloc[iglob*3+0];
+      vx = veloc[iglob*3];
       vy = veloc[iglob*3+1];
       vz = veloc[iglob*3+2];
 
@@ -197,7 +197,7 @@ __global__ void compute_stacey_elastic_single_kernel(realw* veloc,
         atomicAdd(&accel[iglob*3+2],-b_absorb_field[INDEX3(NDIM,NGLL2,2,igll,iface)]);
       }else{
         // gets associated velocity
-        vx = veloc[iglob*3+0];
+        vx = veloc[iglob*3];
         vy = veloc[iglob*3+1];
         vz = veloc[iglob*3+2];
 
@@ -274,7 +274,7 @@ __global__ void compute_stacey_elastic_undoatt_kernel(realw* veloc,
       iglob = d_ibool[INDEX4_PADDED(NGLLX,NGLLX,NGLLX,i,j,k,ispec)]-1;
 
       // gets associated velocity
-      vx = veloc[iglob*3+0];
+      vx = veloc[iglob*3];
       vy = veloc[iglob*3+1];
       vz = veloc[iglob*3+2];
 

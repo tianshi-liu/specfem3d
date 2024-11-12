@@ -48,6 +48,7 @@ __global__ void add_sources_ac_SIM_TYPE_2_OR_3_kernel(field* potential_dot_dot_a
   if (irec_local < nadj_rec_local) {
 
     int ispec = ispec_selected_recloc[irec_local]-1;
+
     if (ispec_is_acoustic[ispec]){
       int i = threadIdx.x;
       int j = threadIdx.y;
