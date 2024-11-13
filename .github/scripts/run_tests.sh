@@ -123,9 +123,20 @@ if [ "${ADIOS2}" == "true" ]; then
   sed -i "s:^ADIOS_ENABLED .*:ADIOS_ENABLED = .true.:" DATA/Par_file
 fi
 
-# default script
-./run_this_example.sh
+# GPU
+if [ "${GPU}" == "true" ]; then
+  # turns on GPU
+  sed -i "s:^GPU_ENABLED .*:GPU_ENABLED = .true.:" DATA/Par_file
+fi
 
+# use kernel script
+if [ "${RUN_KERNEL}" == "true" ]; then
+  # use kernel script
+  ./run_this_example.kernel.sh
+else
+  # default script
+  ./run_this_example.sh
+fi
 # checks exit code
 if [[ $? -ne 0 ]]; then exit 1; fi
 
@@ -136,11 +147,46 @@ echo `date`
 echo
 
 # seismogram comparison
-if [ "${DEBUG}" == "true" ]; then
+if [ "${DEBUG}" == "true" ] || [ "${RUN_KERNEL}" == "true" ]; then
   # no comparisons
   continue
 else
   my_test
+fi
+
+# kernel test
+if [ "${RUN_KERNEL}" == "true" ]; then
+  # homogeneous halfspace
+  if [ "$TESTDIR" == "EXAMPLES/applications/homogeneous_halfspace/" ]; then
+    PASSED=0
+    # checks rho kernel value
+    RHO=3.18576676E-09
+    VAL=`fgrep 'maximum value of rho  kernel' OUTPUT_FILES/output_solver.txt | cut -d = -f 2 | tr -d ' '`
+    echo "kernel rho   : $VAL"
+    echo "" | awk '{diff=ex-val;diff_abs=(diff >= 0)? diff:-diff;diff_rel=diff_abs/ex;print "  value: expected = "ex" gotten = "val" - difference absolute = "diff_abs" relative = "diff_rel; if (diff_rel>0.0001){print "failed"; exit 1;}else{print "good"; exit 0;} }' ex=$RHO val=$VAL
+    if [[ $? -ne 0 ]]; then PASSED=1; fi
+
+    # checks kappa kernel value
+    KAPPA=9.48281809E-09
+    VAL=`fgrep 'maximum value of kappa kernel' OUTPUT_FILES/output_solver.txt | cut -d = -f 2 | tr -d ' '`
+    echo "kernel kappa : $VAL"
+    echo "" | awk '{diff=ex-val;diff_abs=(diff >= 0)? diff:-diff;diff_rel=diff_abs/ex;print "  value: expected = "ex" gotten = "val" - difference absolute = "diff_abs" relative = "diff_rel; if (diff_rel>0.0001){print "failed"; exit 1;}else{print "good"; exit 0;} }' ex=$KAPPA val=$VAL
+    if [[ $? -ne 0 ]]; then PASSED=1; fi
+
+    # checks mu kernel value
+    MU=3.89545782E-08
+    VAL=`fgrep 'maximum value of mu kernel' OUTPUT_FILES/output_solver.txt | cut -d = -f 2 | tr -d ' '`
+    echo "kernel mu    : $VAL"
+    echo "" | awk '{diff=ex-val;diff_abs=(diff >= 0)? diff:-diff;diff_rel=diff_abs/ex;print "  value: expected = "ex" gotten = "val" - difference absolute = "diff_abs" relative = "diff_rel; if (diff_rel>0.0001){print "failed"; exit 1;}else{print "good"; exit 0;} }' ex=$MU val=$VAL
+    if [[ $? -ne 0 ]]; then PASSED=1; fi
+
+    # overall pass
+    if [[ $PASSED -ne 0 ]]; then
+      echo "kernel tests: failed"; exit 1;
+    else
+      echo "kernel tests: good"
+    fi
+  fi
 fi
 
 # cleanup

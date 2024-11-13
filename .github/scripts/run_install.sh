@@ -34,6 +34,14 @@ if [[ "${TEST}" == *"with-hdf5"* ]]; then
   #echo
 fi
 
+## HIP
+if [ "${HIP}" == "true" ]; then
+  echo
+  echo "HIP additionals installation:"
+  echo
+  sudo apt-get install -yq --no-install-recommends libtbb-dev
+fi
+
 # checks exit code
 if [[ $? -ne 0 ]]; then exit 1; fi
 echo

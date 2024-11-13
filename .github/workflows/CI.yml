@@ -787,3 +787,30 @@ jobs:
       run: ./.github/scripts/run_tests.sh
       shell: bash
 
+  linuxTest_20:
+    name: Test run example 20 - HIP GPU homogeneous halfspace
+    runs-on: ubuntu-latest
+    needs: [linuxCheck]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install packages
+      env:
+        HIP: true
+      run: ./.github/scripts/run_install.sh
+      shell: bash
+
+    - name: Run build
+      env:
+        TESTFLAGS: --with-hip HIPCC=g++ HIP_FLAGS="-O2 -g -std=c++17" HIP_PLATFORM=cpu HIP_INC=./external_libs/ROCm-HIP-CPU/include HIP_LIBS="-ltbb -lpthread -lstdc++"
+      run: ./.github/scripts/run_build.sh
+      shell: bash
+
+    - name: Run test kernel
+      env:
+        TESTDIR: EXAMPLES/applications/homogeneous_halfspace/
+        GPU: true
+        RUN_KERNEL: true
+      run: ./.github/scripts/run_tests.sh
+      shell: bash
