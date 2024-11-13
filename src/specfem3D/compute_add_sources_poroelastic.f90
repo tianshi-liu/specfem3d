@@ -36,6 +36,7 @@
                          UNDO_ATTENUATION_AND_OR_PML, &
                          NSOURCES,myrank,it,islice_selected_source,ispec_selected_source, &
                          sourcearrays,SIMULATION_TYPE,NSTEP, &
+                         SU_FORMAT,READ_ADJSRC_ASDF, &
                          ispec_selected_rec, &
                          nadj_rec_local,NTSTEP_BETWEEN_READ_ADJSRC, &
                          hxir_adjstore,hetar_adjstore,hgammar_adjstore,source_adjoint,number_adjsources_global,nadj_rec_local
@@ -67,6 +68,7 @@
 
   ! forward simulations
   if (SIMULATION_TYPE == 1 .and. nsources_local > 0) then
+
     ! ignore CMT sources for fault rupture simulations
     if (FAULT_SIMULATION) return
 
@@ -217,16 +219,31 @@
       ! this must be done carefully, otherwise the adjoint sources may be added
       ! twice
       if (ibool_read_adj_arrays) then
-        if (USE_BINARY_FOR_SEISMOGRAMS) stop 'Adjoint simulations not supported with .bin format, please use ASCII instead'
-        ! ASCII format
-        !!! read ascii adjoint sources
-        do irec_local = 1, nadj_rec_local
-          irec = number_adjsources_global(irec_local)
-          ! compute source arrays
-          ! reads in **net**.**sta**.**BH**.adj files
-          adj_source_file = trim(network_name(irec))//'.'//trim(station_name(irec))
-          call compute_arrays_adjoint_source(adj_source_file,irec_local)
-        enddo
+        ! reads adjoint source files
+        if (SU_FORMAT) then
+          ! SU format
+          call compute_arrays_adjoint_source_SU(IDOMAIN_ELASTIC)
+        else if (READ_ADJSRC_ASDF) then
+          ! ASDF format
+          do irec_local = 1, nadj_rec_local
+            ! reads in **net**.**sta**.**BH**.adj files
+            irec = number_adjsources_global(irec_local)
+            adj_source_file = trim(network_name(irec))//'_'//trim(station_name(irec))   ! format: "net_sta"
+            ! compute source arrays
+            call compute_arrays_adjoint_source(adj_source_file,irec_local)
+          enddo
+        else
+          ! default ASCII format
+          if (USE_BINARY_FOR_SEISMOGRAMS) stop 'Adjoint simulations not supported with .bin format, please use SU format instead'
+          !!! read ascii adjoint sources
+          do irec_local = 1, nadj_rec_local
+            ! reads in **net**.**sta**.**BH**.adj files
+            irec = number_adjsources_global(irec_local)
+            adj_source_file = trim(network_name(irec))//'.'//trim(station_name(irec))   ! format: "net.sta"
+            ! compute source arrays
+            call compute_arrays_adjoint_source(adj_source_file,irec_local)
+          enddo
+        endif
       endif ! if (ibool_read_adj_arrays)
 
       if (it < NSTEP) then
@@ -277,6 +294,7 @@
 
   ! adjoint/backward simulations
   if (SIMULATION_TYPE == 3 .and. nsources_local > 0) then
+
     ! ignore CMT sources for fault rupture simulations
     if (FAULT_SIMULATION) return
 

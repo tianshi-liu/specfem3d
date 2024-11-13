@@ -894,7 +894,7 @@ end module user_noise_distribution
 ! step 2/3: calculate/reconstruct the "ensemble forward wavefield"
 ! read surface movie (displacement) at every time steps, injected as the source of "ensemble forward wavefield"
 ! in step 2, call noise_read_add_surface_movie_GPU(..., NSTEP-it+1 ,...)
-! in step 3, call noise_read_add_surface_movie(..., it ,...)
+! in step 3, call noise_read_add_surface_movie_GPU(..., it ,...)
   subroutine noise_read_add_surface_movie_GPU(noise_surface_movie,it,num_free_surface_faces, &
                                               Mesh_pointer,NOISE_TOMOGRAPHY)
 
@@ -913,12 +913,11 @@ end module user_noise_distribution
 
   ! reads in ensemble noise sources at surface
   if (num_free_surface_faces > 0) then
-
     ! read surface movie
     call read_abs(2,noise_surface_movie,CUSTOM_REAL*NDIM*NGLLSQUARE*num_free_surface_faces,it)
 
+    ! adds noise movie field on GPU
     call noise_read_add_surface_movie_cu(Mesh_pointer,noise_surface_movie,NOISE_TOMOGRAPHY)
-
   endif
 
   end subroutine noise_read_add_surface_movie_GPU
