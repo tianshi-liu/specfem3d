@@ -33,12 +33,14 @@ my_test(){
 my_kernel_test(){
   # kernel value test - checks rho/kappa/mu kernel value outputs
   echo "testing kernel values:"
-  if [ ! -e REF_KERNEL/output_solver.txt ]; then echo "Please check if file REF_KERNEL/output_solver.txt exists..."; ls -alR ./; exit 1; fi
-  if [ ! -e OUTPUT_FILES/output_solver.txt ]; then echo "Please check if file OUTPUT_FILES/output_solver.txt exists..."; ls -alR ./; exit 1; fi
+  file_ref=REF_KERNEL/output_solver.txt
+  file_out=output.log        # captures the OUTPUT_FILES/output_solver.txt when running solver since IMAIN was set to standard out
+  if [ ! -e $file_ref ]; then echo "Please check if file $file_ref exists..."; ls -alR ./; exit 1; fi
+  if [ ! -e $file_out ]; then echo "Please check if file $file_out exists..."; ls -alR ./; exit 1; fi
   # gets reference expected kernel values from REF_KERNEL/ folder
-  RHO=`grep -E 'maximum value of rho[[:space:]]+kernel' REF_KERNEL/output_solver.txt | cut -d = -f 2 | tr -d ' '`
-  KAPPA=`grep -E 'maximum value of kappa[[:space:]]+kernel' REF_KERNEL/output_solver.txt | cut -d = -f 2 | tr -d ' '`
-  MU=`grep -E 'maximum value of mu[[:space:]]+kernel' REF_KERNEL/output_solver.txt | cut -d = -f 2 | tr -d ' '`
+  RHO=`grep -E 'maximum value of rho[[:space:]]+kernel' $file_ref | cut -d = -f 2 | tr -d ' '`
+  KAPPA=`grep -E 'maximum value of kappa[[:space:]]+kernel' $file_ref | cut -d = -f 2 | tr -d ' '`
+  MU=`grep -E 'maximum value of mu[[:space:]]+kernel' $file_ref | cut -d = -f 2 | tr -d ' '`
   # need at least rho & kappa (for acoustic kernels)
   if [ "$RHO" == "" ] || [ "$KAPPA" == "" ]; then
     echo "  missing reference kernel values: RHO=$RHO KAPPA=$KAPPA MU=$MU"
@@ -53,21 +55,21 @@ my_kernel_test(){
   PASSED=0
   # checks rho kernel value
   if [ "$RHO" != "" ]; then
-    VAL=`grep -E 'maximum value of rho[[:space:]]+kernel' OUTPUT_FILES/output_solver.txt | cut -d = -f 2 | tr -d ' '`
+    VAL=`grep -E 'maximum value of rho[[:space:]]+kernel' $file_out | cut -d = -f 2 | tr -d ' '`
     echo "kernel rho   : $VAL"
     echo "" | awk '{diff=ex-val;diff_abs=(diff >= 0)? diff:-diff;diff_rel=diff_abs/ex;print "  value: expected = "ex" gotten = "val" - difference absolute = "diff_abs" relative = "diff_rel; if (diff_rel>0.0001){print "  failed"; exit 1;}else{print "  good"; exit 0;} }' ex=$RHO val=$VAL
     if [[ $? -ne 0 ]]; then PASSED=1; fi
   fi
   # checks kappa kernel value
   if [ "$KAPPA" != "" ]; then
-    VAL=`grep -E 'maximum value of kappa[[:space:]]+kernel' OUTPUT_FILES/output_solver.txt | cut -d = -f 2 | tr -d ' '`
+    VAL=`grep -E 'maximum value of kappa[[:space:]]+kernel' $file_out | cut -d = -f 2 | tr -d ' '`
     echo "kernel kappa : $VAL"
     echo "" | awk '{diff=ex-val;diff_abs=(diff >= 0)? diff:-diff;diff_rel=diff_abs/ex;print "  value: expected = "ex" gotten = "val" - difference absolute = "diff_abs" relative = "diff_rel; if (diff_rel>0.0001){print "  failed"; exit 1;}else{print "  good"; exit 0;} }' ex=$KAPPA val=$VAL
     if [[ $? -ne 0 ]]; then PASSED=1; fi
   fi
   # checks mu kernel value (if available for elastic kernel)
   if [ "$MU" != "" ]; then
-    VAL=`grep -E 'maximum value of mu[[:space:]]+kernel' OUTPUT_FILES/output_solver.txt | cut -d = -f 2 | tr -d ' '`
+    VAL=`grep -E 'maximum value of mu[[:space:]]+kernel' $file_out | cut -d = -f 2 | tr -d ' '`
     echo "kernel mu    : $VAL"
     echo "" | awk '{diff=ex-val;diff_abs=(diff >= 0)? diff:-diff;diff_rel=diff_abs/ex;print "  value: expected = "ex" gotten = "val" - difference absolute = "diff_abs" relative = "diff_rel; if (diff_rel>0.0001){print "  failed"; exit 1;}else{print "  good"; exit 0;} }' ex=$MU val=$VAL
     if [[ $? -ne 0 ]]; then PASSED=1; fi
@@ -182,7 +184,7 @@ fi
 # use kernel script
 if [ "${RUN_KERNEL}" == "true" ]; then
   # use kernel script
-  ./run_this_example_kernel.sh
+  ./run_this_example_kernel.sh | tee output.log
 else
   # default script
   ./run_this_example.sh
@@ -215,7 +217,7 @@ if [ "${RUN_KERNEL}" == "true" ]; then
 
   # re-run kernel test w/ UNDO_ATT
   # clean up
-  rm -rf OUTPUT_FILES/
+  rm -rf OUTPUT_FILES/ output.log
 
   # w/ undoatt iteration
   # turns on UNDO_ATTENUATION_AND_OR_PML
@@ -225,7 +227,7 @@ if [ "${RUN_KERNEL}" == "true" ]; then
   echo
 
   # use kernel script
-  ./run_this_example_kernel.sh
+  ./run_this_example_kernel.sh | tee output.log
   # checks exit code
   if [[ $? -ne 0 ]]; then exit 1; fi
 
