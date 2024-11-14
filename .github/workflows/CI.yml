@@ -626,7 +626,7 @@ jobs:
 
     - name: Run build
       env:
-        TESTFLAGS: FLAGS_CHECK="-O3 -mcmodel=medium -std=f2008 -Wall -Wno-do-subscript -Wno-conversion -Wno-maybe-uninitialized"
+        TESTFLAGS: 'FLAGS_CHECK="-O3 -mcmodel=medium -std=f2008 -Wall -Wno-do-subscript -Wno-conversion -Wno-maybe-uninitialized"'
       run: ./.github/scripts/run_build.sh
       shell: bash
 
