@@ -40,6 +40,16 @@ else
   adios=()
 fi
 
+## HDF5
+if [ "${HDF5}" == "true" ]; then
+  echo
+  echo "enabling HDF5"
+  echo
+  hdf=(--with-hdf5 HDF5_INC="/usr/include/hdf5/openmpi/" HDF5_LIBS="-L/usr/lib/x86_64-linux-gnu/hdf5/openmpi")
+else
+  hdf=()
+fi
+
 ## HIP
 if [ "${HIP}" == "true" ]; then
   echo
@@ -55,10 +65,14 @@ echo
 echo "configuration:"
 echo
 
+# split TESTFLAGS into individual items
+set -- ${TESTFLAGS}
+
 ./configure \
 "${adios[@]}" \
+"${hdf[@]}" \
 "${hip[@]}" \
-FC=gfortran MPIFC=mpif90 CC=gcc ${TESTFLAGS}
+FC=gfortran MPIFC=mpif90 CC=gcc "$@"
 
 # checks
 if [[ $? -ne 0 ]]; then echo "configuration failed:"; cat config.log; echo ""; echo "exiting..."; exit 1; fi

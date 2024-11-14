@@ -626,7 +626,7 @@ jobs:
 
     - name: Run build
       env:
-        TESTFLAGS: 'FLAGS_CHECK="-O3 -mcmodel=medium -std=f2008 -Wall -Wno-do-subscript -Wno-conversion -Wno-maybe-uninitialized"'
+        TESTFLAGS: FLAGS_CHECK="-O3 -mcmodel=medium -std=f2008 -Wall -Wno-do-subscript -Wno-conversion -Wno-maybe-uninitialized"
       run: ./.github/scripts/run_build.sh
       shell: bash
 
@@ -805,7 +805,7 @@ jobs:
       shell: bash
 
   linuxTest_20:
-    name: Test 20 - socal1D hdf5 i/o
+    name: Test 20 - socal1D HDF5 I/O
     runs-on: ubuntu-latest
     needs: [linuxCheck]
 
@@ -814,21 +814,22 @@ jobs:
 
     - name: Install packages
       env:
-        TEST: with-hdf5
+        HDF5: true
       run: ./.github/scripts/run_install.sh
       shell: bash
 
     - name: Run build
       env:
-        TESTFLAGS: --with-mpi --with-hdf5 HDF5_INC=/usr/include/hdf5/openmpi/ HDF5_LIBS=-L/usr/lib/x86_64-linux-gnu/hdf5/openmpi
+        TESTFLAGS: --with-mpi
+        HDF5: true
       run: ./.github/scripts/run_build.sh
       shell: bash
 
     - name: Run test
       env:
-        TEST: with-hdf5
         TESTDIR: EXAMPLES/applications/meshfem3D_examples/socal1D/
         TESTID: 0
+        HDF5: true
       run: ./.github/scripts/run_tests.sh
       shell: bash
 

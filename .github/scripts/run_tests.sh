@@ -160,10 +160,10 @@ if [ "$TESTDIR" == "EXAMPLES/applications/meshfem3D_examples/sep_bathymetry/" ];
   sed -i "s:^NSTEP .*:NSTEP    = 1000:" DATA/Par_file
 fi
 
-## hdf5 i/o example
-if [[ "${TEST}" == *"with-hdf5"* ]]; then
+## HDF5 - i/o example
+if [ "${HDF5}" == "true" ]; then
   echo
-  echo "test run: ${TEST}"
+  echo "test run w/ HDF5"
   echo
   # turns on HDF5
   echo "turning on HDF5"
