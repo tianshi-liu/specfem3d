@@ -73,11 +73,13 @@ sed -i "s:IMAIN .*:IMAIN = ISTANDARD_OUTPUT:" setup/constants.h
 
 # compilation
 echo
-echo "clean:"
+echo "clean"
+echo
 make clean
 
 echo
-echo "compilation:"
+echo "compilation"
+echo
 make -j4 all
 
 # checks

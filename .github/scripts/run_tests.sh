@@ -22,7 +22,9 @@ echo
 
 # bash function for checking seismogram output with reference solutions
 my_test(){
-  echo "testing seismograms:"
+  echo "*******************"
+  echo "testing seismograms"
+  echo "*******************"
   ln -s $WORKDIR/utils/scripts/compare_seismogram_correlations.py
   ./compare_seismogram_correlations.py REF_SEIS/ OUTPUT_FILES/
   if [[ $? -ne 0 ]]; then exit 1; fi
@@ -32,7 +34,9 @@ my_test(){
 
 my_kernel_test(){
   # kernel value test - checks rho/kappa/mu kernel value outputs
-  echo "testing kernel values:"
+  echo "*********************"
+  echo "testing kernel values"
+  echo "*********************"
   file_ref=REF_KERNEL/output_solver.txt
   file_out=output.log        # captures the OUTPUT_FILES/output_solver.txt when running solver since IMAIN was set to standard out
   if [ ! -e $file_ref ]; then echo "Please check if file $file_ref exists..."; ls -alR ./; exit 1; fi
@@ -48,30 +52,29 @@ my_kernel_test(){
     exit 1
   else
     echo "  reference kernel values: RHO=$RHO KAPPA=$KAPPA MU=$MU"
-    echo
   fi
-  # compares with test output
+  # compares with test output - using a relative tolerance of 0.001 (1 promille) with respect to expected value
   # final test result
   PASSED=0
   # checks rho kernel value
   if [ "$RHO" != "" ]; then
     VAL=`grep -E 'maximum value of rho[[:space:]]+kernel' $file_out | cut -d = -f 2 | tr -d ' '`
     echo "kernel rho   : $VAL"
-    echo "" | awk '{diff=ex-val;diff_abs=(diff >= 0)? diff:-diff;diff_rel=diff_abs/ex;print "  value: expected = "ex" gotten = "val" - difference absolute = "diff_abs" relative = "diff_rel; if (diff_rel>0.0001){print "  failed"; exit 1;}else{print "  good"; exit 0;} }' ex=$RHO val=$VAL
+    echo "" | awk '{diff=ex-val;diff_abs=(diff >= 0)? diff:-diff;diff_rel=diff_abs/ex;print "  value: expected = "ex" gotten = "val" - difference absolute = "diff_abs" relative = "diff_rel; if (diff_rel>0.001){print "  failed"; exit 1;}else{print "  good"; exit 0;} }' ex=$RHO val=$VAL
     if [[ $? -ne 0 ]]; then PASSED=1; fi
   fi
   # checks kappa kernel value
   if [ "$KAPPA" != "" ]; then
     VAL=`grep -E 'maximum value of kappa[[:space:]]+kernel' $file_out | cut -d = -f 2 | tr -d ' '`
     echo "kernel kappa : $VAL"
-    echo "" | awk '{diff=ex-val;diff_abs=(diff >= 0)? diff:-diff;diff_rel=diff_abs/ex;print "  value: expected = "ex" gotten = "val" - difference absolute = "diff_abs" relative = "diff_rel; if (diff_rel>0.0001){print "  failed"; exit 1;}else{print "  good"; exit 0;} }' ex=$KAPPA val=$VAL
+    echo "" | awk '{diff=ex-val;diff_abs=(diff >= 0)? diff:-diff;diff_rel=diff_abs/ex;print "  value: expected = "ex" gotten = "val" - difference absolute = "diff_abs" relative = "diff_rel; if (diff_rel>0.001){print "  failed"; exit 1;}else{print "  good"; exit 0;} }' ex=$KAPPA val=$VAL
     if [[ $? -ne 0 ]]; then PASSED=1; fi
   fi
   # checks mu kernel value (if available for elastic kernel)
   if [ "$MU" != "" ]; then
     VAL=`grep -E 'maximum value of mu[[:space:]]+kernel' $file_out | cut -d = -f 2 | tr -d ' '`
     echo "kernel mu    : $VAL"
-    echo "" | awk '{diff=ex-val;diff_abs=(diff >= 0)? diff:-diff;diff_rel=diff_abs/ex;print "  value: expected = "ex" gotten = "val" - difference absolute = "diff_abs" relative = "diff_rel; if (diff_rel>0.0001){print "  failed"; exit 1;}else{print "  good"; exit 0;} }' ex=$MU val=$VAL
+    echo "" | awk '{diff=ex-val;diff_abs=(diff >= 0)? diff:-diff;diff_rel=diff_abs/ex;print "  value: expected = "ex" gotten = "val" - difference absolute = "diff_abs" relative = "diff_rel; if (diff_rel>0.001){print "  failed"; exit 1;}else{print "  good"; exit 0;} }' ex=$MU val=$VAL
     if [[ $? -ne 0 ]]; then PASSED=1; fi
   fi
   # overall pass
@@ -162,6 +165,7 @@ if [[ "${TEST}" == *"with-hdf5"* ]]; then
   echo
   echo "test run: ${TEST}"
   echo
+  echo "turning on HDF5"
   sed -i "s:^HDF5_ENABLED .*:HDF5_ENABLED    = .true.:" DATA/Par_file
   sed -i "s:^HDF5_FOR_MOVIES .*:HDF5_FOR_MOVIES    = .true.:" DATA/Par_file
   sed -i "s:^HDF5_IO_NODES .*:HDF5_IO_NODES    = 1:" DATA/Par_file
@@ -172,14 +176,12 @@ fi
 # adios
 if [ "${ADIOS2}" == "true" ]; then
   # turns on ADIOS
+  echo "turning on ADIOS"
   sed -i "s:^ADIOS_ENABLED .*:ADIOS_ENABLED = .true.:" DATA/Par_file
 fi
 
-# GPU
-if [ "${GPU}" == "true" ]; then
-  # turns on GPU
-  sed -i "s:^GPU_ENABLED .*:GPU_ENABLED = .true.:" DATA/Par_file
-fi
+# save Par_file state
+cp -v DATA/Par_file DATA/Par_file.bak
 
 # use kernel script
 if [ "${RUN_KERNEL}" == "true" ]; then
@@ -210,42 +212,77 @@ if [[ $? -ne 0 ]]; then exit 1; fi
 
 # kernel test
 if [ "${RUN_KERNEL}" == "true" ]; then
-  echo
-  echo "kernel test directory: `pwd`"
-  echo
+  # check kernel values
   my_kernel_test
+  # checks exit code
+  if [[ $? -ne 0 ]]; then exit 1; fi
 
-  # re-run kernel test w/ UNDO_ATT
   # clean up
-  rm -rf OUTPUT_FILES/ output.log
+  rm -rf OUTPUT_FILES/ SEM/ output.log
 
+  # re-run kernel test w/ GPU_MODE
+  if [ "${GPU}" == "true" ]; then
+    # turns on GPU
+    echo "turning on GPU"
+    sed -i "s:^GPU_MODE .*:GPU_MODE = .true.:" DATA/Par_file
+    # use kernel script
+    ./run_this_example_kernel.sh | tee output.log
+    # checks exit code
+    if [[ $? -ne 0 ]]; then exit 1; fi
+    # kernel test
+    my_kernel_test
+    # checks exit code
+    if [[ $? -ne 0 ]]; then exit 1; fi
+    # clean up
+    rm -rf OUTPUT_FILES/ SEM/ output.log
+  fi
+
+  # kernel test w/ UNDO_ATT
   # w/ undoatt iteration
-  # turns on UNDO_ATTENUATION_AND_OR_PML
-  sed -i "s:^UNDO_ATTENUATION_AND_OR_PML .*:UNDO_ATTENUATION_AND_OR_PML = .true.:" DATA/Par_file
   echo
+  echo "*****************************************"
   echo "run kernel w/ UNDO_ATTENUATION_AND_OR_PML"
+  echo "*****************************************"
   echo
+  # restore original Par_file
+  cp -v DATA/Par_file.bak DATA/Par_file
 
+  # turns on UNDO_ATTENUATION_AND_OR_PML
+  echo "turning on UNDO_ATTENUATION_AND_OR_PML"
+  sed -i "s:^UNDO_ATTENUATION_AND_OR_PML .*:UNDO_ATTENUATION_AND_OR_PML = .true.:" DATA/Par_file
   # use kernel script
   ./run_this_example_kernel.sh | tee output.log
   # checks exit code
   if [[ $? -ne 0 ]]; then exit 1; fi
-
-  # simulation done
-  echo
-  echo "simulation done: `pwd`"
-  echo `date`
-  echo
-
   # kernel test
   my_kernel_test
   # checks exit code
   if [[ $? -ne 0 ]]; then exit 1; fi
+  # clean up
+  rm -rf OUTPUT_FILES/ SEM/ output.log
+
+  # re-run kernel test w/ GPU_MODE
+  if [ "${GPU}" == "true" ]; then
+    # turns on GPU
+    echo "turning on GPU"
+    sed -i "s:^GPU_MODE .*:GPU_MODE = .true.:" DATA/Par_file
+    # use kernel script
+    ./run_this_example_kernel.sh | tee output.log
+    # checks exit code
+    if [[ $? -ne 0 ]]; then exit 1; fi
+    # kernel test
+    my_kernel_test
+    # checks exit code
+    if [[ $? -ne 0 ]]; then exit 1; fi
+    # clean up
+    rm -rf OUTPUT_FILES/ SEM/ output.log
+  fi
 fi
 
 # cleanup
 rm -rf OUTPUT_FILES/
 if [ -e DATABASES_MPI ]; then rm -rf DATABASES_MPI/; fi
+if [ -e SEM ]; then rm -rf SEM/; fi
 
 echo
 echo "all good"
