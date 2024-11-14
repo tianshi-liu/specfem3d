@@ -40,13 +40,24 @@ else
   adios=()
 fi
 
+## HIP
+if [ "${HIP}" == "true" ]; then
+  echo
+  echo "enabling HIP"
+  echo
+  hip=(--with-hip HIPCC=g++ HIP_FLAGS="-O2 -g -std=c++17" HIP_PLATFORM=cpu HIP_INC=./external_libs/ROCm-HIP-CPU/include HIP_LIBS="-ltbb -lpthread -lstdc++")
+else
+  hip=()
+fi
+
 # configuration
 echo
 echo "configuration:"
 echo
 
 ./configure \
-${adios[@]} \
+"${adios[@]}" \
+"${hip[@]}" \
 FC=gfortran MPIFC=mpif90 CC=gcc ${TESTFLAGS}
 
 # checks
@@ -62,8 +73,12 @@ sed -i "s:IMAIN .*:IMAIN = ISTANDARD_OUTPUT:" setup/constants.h
 
 # compilation
 echo
+echo "clean:"
+make clean
+
+echo
 echo "compilation:"
-make clean; make -j2 all
+make -j4 all
 
 # checks
 if [[ $? -ne 0 ]]; then exit 1; fi

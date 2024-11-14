@@ -30,6 +30,45 @@ my_test(){
   if [[ $? -ne 0 ]]; then exit 1; fi
 }
 
+my_kernel_test(){
+  # kernel values
+  # get expect input arguments
+  RHO="$1"
+  KAPPA="$2"
+  MU="$3"
+  # Check if arguments are not empty
+  if [[ -z "$RHO" || -z "$KAPPA" || -z "$MU" ]]; then
+    echo "Error: All three arguments are required, got RHO=$RHO KAPPA=$KAPPA MU=$MU"
+    exit 1
+  fi
+  # final test result
+  PASSED=0
+  # checks rho kernel value
+  VAL=`fgrep 'maximum value of rho  kernel' OUTPUT_FILES/output_solver.txt | cut -d = -f 2 | tr -d ' '`
+  echo "kernel rho   : $VAL"
+  echo "" | awk '{diff=ex-val;diff_abs=(diff >= 0)? diff:-diff;diff_rel=diff_abs/ex;print "  value: expected = "ex" gotten = "val" - difference absolute = "diff_abs" relative = "diff_rel; if (diff_rel>0.0001){print "failed"; exit 1;}else{print "good"; exit 0;} }' ex=$RHO val=$VAL
+  if [[ $? -ne 0 ]]; then PASSED=1; fi
+
+  # checks kappa kernel value
+  VAL=`fgrep 'maximum value of kappa kernel' OUTPUT_FILES/output_solver.txt | cut -d = -f 2 | tr -d ' '`
+  echo "kernel kappa : $VAL"
+  echo "" | awk '{diff=ex-val;diff_abs=(diff >= 0)? diff:-diff;diff_rel=diff_abs/ex;print "  value: expected = "ex" gotten = "val" - difference absolute = "diff_abs" relative = "diff_rel; if (diff_rel>0.0001){print "failed"; exit 1;}else{print "good"; exit 0;} }' ex=$KAPPA val=$VAL
+  if [[ $? -ne 0 ]]; then PASSED=1; fi
+
+  # checks mu kernel value
+  VAL=`fgrep 'maximum value of mu kernel' OUTPUT_FILES/output_solver.txt | cut -d = -f 2 | tr -d ' '`
+  echo "kernel mu    : $VAL"
+  echo "" | awk '{diff=ex-val;diff_abs=(diff >= 0)? diff:-diff;diff_rel=diff_abs/ex;print "  value: expected = "ex" gotten = "val" - difference absolute = "diff_abs" relative = "diff_rel; if (diff_rel>0.0001){print "failed"; exit 1;}else{print "good"; exit 0;} }' ex=$MU val=$VAL
+  if [[ $? -ne 0 ]]; then PASSED=1; fi
+
+  # overall pass
+  if [[ $PASSED -ne 0 ]]; then
+    echo "testing kernel values: failed"; exit 1;
+  else
+    echo "testing kernel values: all good"
+  fi
+}
+
 # test example
 cd $dir
 
@@ -132,7 +171,7 @@ fi
 # use kernel script
 if [ "${RUN_KERNEL}" == "true" ]; then
   # use kernel script
-  ./run_this_example.kernel.sh
+  ./run_this_example_kernel.sh
 else
   # default script
   ./run_this_example.sh
@@ -153,44 +192,26 @@ if [ "${DEBUG}" == "true" ] || [ "${RUN_KERNEL}" == "true" ]; then
 else
   my_test
 fi
+# checks exit code
+if [[ $? -ne 0 ]]; then exit 1; fi
 
 # kernel test
 if [ "${RUN_KERNEL}" == "true" ]; then
   # homogeneous halfspace
   if [ "$TESTDIR" == "EXAMPLES/applications/homogeneous_halfspace/" ]; then
-    PASSED=0
-    # checks rho kernel value
+    # checks rho/kappa/mu kernel value outputs
     RHO=3.18576676E-09
-    VAL=`fgrep 'maximum value of rho  kernel' OUTPUT_FILES/output_solver.txt | cut -d = -f 2 | tr -d ' '`
-    echo "kernel rho   : $VAL"
-    echo "" | awk '{diff=ex-val;diff_abs=(diff >= 0)? diff:-diff;diff_rel=diff_abs/ex;print "  value: expected = "ex" gotten = "val" - difference absolute = "diff_abs" relative = "diff_rel; if (diff_rel>0.0001){print "failed"; exit 1;}else{print "good"; exit 0;} }' ex=$RHO val=$VAL
-    if [[ $? -ne 0 ]]; then PASSED=1; fi
-
-    # checks kappa kernel value
     KAPPA=9.48281809E-09
-    VAL=`fgrep 'maximum value of kappa kernel' OUTPUT_FILES/output_solver.txt | cut -d = -f 2 | tr -d ' '`
-    echo "kernel kappa : $VAL"
-    echo "" | awk '{diff=ex-val;diff_abs=(diff >= 0)? diff:-diff;diff_rel=diff_abs/ex;print "  value: expected = "ex" gotten = "val" - difference absolute = "diff_abs" relative = "diff_rel; if (diff_rel>0.0001){print "failed"; exit 1;}else{print "good"; exit 0;} }' ex=$KAPPA val=$VAL
-    if [[ $? -ne 0 ]]; then PASSED=1; fi
-
-    # checks mu kernel value
     MU=3.89545782E-08
-    VAL=`fgrep 'maximum value of mu kernel' OUTPUT_FILES/output_solver.txt | cut -d = -f 2 | tr -d ' '`
-    echo "kernel mu    : $VAL"
-    echo "" | awk '{diff=ex-val;diff_abs=(diff >= 0)? diff:-diff;diff_rel=diff_abs/ex;print "  value: expected = "ex" gotten = "val" - difference absolute = "diff_abs" relative = "diff_rel; if (diff_rel>0.0001){print "failed"; exit 1;}else{print "good"; exit 0;} }' ex=$MU val=$VAL
-    if [[ $? -ne 0 ]]; then PASSED=1; fi
-
-    # overall pass
-    if [[ $PASSED -ne 0 ]]; then
-      echo "kernel tests: failed"; exit 1;
-    else
-      echo "kernel tests: good"
-    fi
+    my_kernel_test $RHO $KAPPA $MU
   fi
 fi
+# checks exit code
+if [[ $? -ne 0 ]]; then exit 1; fi
 
 # cleanup
-rm -rf OUTPUT_FILES/ DATABASES_MPI/
+rm -rf OUTPUT_FILES/
+if [ -e DATABASES_MPI ]; then rm -rf DATABASES_MPI/; fi
 
 echo
 echo "all good"

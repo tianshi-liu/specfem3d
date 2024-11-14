@@ -160,7 +160,7 @@ jobs:
       run: ./configure
 
     - name: make
-      run: make -j2 all
+      run: make -j4 all
 
 
   linuxCheck-Intel:
@@ -331,7 +331,7 @@ jobs:
 
     - name: Run build
       env:
-        TESTFLAGS: --with-mpi  # --enable-vectorization
+        TESTFLAGS: --with-mpi
       run: ./.github/scripts/run_build.sh
       shell: bash
 
@@ -794,6 +794,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        submodules: true      # needs submodule content in folder external_libs/ROCm-HIP-CPU/
 
     - name: Install packages
       env:
@@ -803,7 +805,7 @@ jobs:
 
     - name: Run build
       env:
-        TESTFLAGS: --with-hip HIPCC=g++ HIP_FLAGS="-O2 -g -std=c++17" HIP_PLATFORM=cpu HIP_INC=./external_libs/ROCm-HIP-CPU/include HIP_LIBS="-ltbb -lpthread -lstdc++"
+        HIP: true
       run: ./.github/scripts/run_build.sh
       shell: bash
 
