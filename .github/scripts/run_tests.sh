@@ -31,36 +31,47 @@ my_test(){
 }
 
 my_kernel_test(){
-  # kernel values
-  # get expect input arguments
-  RHO="$1"
-  KAPPA="$2"
-  MU="$3"
-  # Check if arguments are not empty
-  if [[ -z "$RHO" || -z "$KAPPA" || -z "$MU" ]]; then
-    echo "Error: All three arguments are required, got RHO=$RHO KAPPA=$KAPPA MU=$MU"
+  # kernel value test - checks rho/kappa/mu kernel value outputs
+  echo "testing kernel values:"
+  if [ ! -e REF_KERNEL/output_solver.txt ]; then echo "Please check if file REF_KERNEL/output_solver.txt exists..."; ls -alR ./; exit 1; fi
+  if [ ! -e OUTPUT_FILES/output_solver.txt ]; then echo "Please check if file OUTPUT_FILES/output_solver.txt exists..."; ls -alR ./; exit 1; fi
+  # gets reference expected kernel values from REF_KERNEL/ folder
+  RHO=`grep -E 'maximum value of rho[[:space:]]+kernel' REF_KERNEL/output_solver.txt | cut -d = -f 2 | tr -d ' '`
+  KAPPA=`grep -E 'maximum value of kappa[[:space:]]+kernel' REF_KERNEL/output_solver.txt | cut -d = -f 2 | tr -d ' '`
+  MU=`grep -E 'maximum value of mu[[:space:]]+kernel' REF_KERNEL/output_solver.txt | cut -d = -f 2 | tr -d ' '`
+  # need at least rho & kappa (for acoustic kernels)
+  if [ "$RHO" == "" ] || [ "$KAPPA" == "" ]; then
+    echo "  missing reference kernel values: RHO=$RHO KAPPA=$KAPPA MU=$MU"
+    echo
     exit 1
+  else
+    echo "  reference kernel values: RHO=$RHO KAPPA=$KAPPA MU=$MU"
+    echo
   fi
+  # compares with test output
   # final test result
   PASSED=0
   # checks rho kernel value
-  VAL=`fgrep 'maximum value of rho  kernel' OUTPUT_FILES/output_solver.txt | cut -d = -f 2 | tr -d ' '`
-  echo "kernel rho   : $VAL"
-  echo "" | awk '{diff=ex-val;diff_abs=(diff >= 0)? diff:-diff;diff_rel=diff_abs/ex;print "  value: expected = "ex" gotten = "val" - difference absolute = "diff_abs" relative = "diff_rel; if (diff_rel>0.0001){print "failed"; exit 1;}else{print "good"; exit 0;} }' ex=$RHO val=$VAL
-  if [[ $? -ne 0 ]]; then PASSED=1; fi
-
+  if [ "$RHO" != "" ]; then
+    VAL=`grep -E 'maximum value of rho[[:space:]]+kernel' OUTPUT_FILES/output_solver.txt | cut -d = -f 2 | tr -d ' '`
+    echo "kernel rho   : $VAL"
+    echo "" | awk '{diff=ex-val;diff_abs=(diff >= 0)? diff:-diff;diff_rel=diff_abs/ex;print "  value: expected = "ex" gotten = "val" - difference absolute = "diff_abs" relative = "diff_rel; if (diff_rel>0.0001){print "  failed"; exit 1;}else{print "  good"; exit 0;} }' ex=$RHO val=$VAL
+    if [[ $? -ne 0 ]]; then PASSED=1; fi
+  fi
   # checks kappa kernel value
-  VAL=`fgrep 'maximum value of kappa kernel' OUTPUT_FILES/output_solver.txt | cut -d = -f 2 | tr -d ' '`
-  echo "kernel kappa : $VAL"
-  echo "" | awk '{diff=ex-val;diff_abs=(diff >= 0)? diff:-diff;diff_rel=diff_abs/ex;print "  value: expected = "ex" gotten = "val" - difference absolute = "diff_abs" relative = "diff_rel; if (diff_rel>0.0001){print "failed"; exit 1;}else{print "good"; exit 0;} }' ex=$KAPPA val=$VAL
-  if [[ $? -ne 0 ]]; then PASSED=1; fi
-
-  # checks mu kernel value
-  VAL=`fgrep 'maximum value of mu kernel' OUTPUT_FILES/output_solver.txt | cut -d = -f 2 | tr -d ' '`
-  echo "kernel mu    : $VAL"
-  echo "" | awk '{diff=ex-val;diff_abs=(diff >= 0)? diff:-diff;diff_rel=diff_abs/ex;print "  value: expected = "ex" gotten = "val" - difference absolute = "diff_abs" relative = "diff_rel; if (diff_rel>0.0001){print "failed"; exit 1;}else{print "good"; exit 0;} }' ex=$MU val=$VAL
-  if [[ $? -ne 0 ]]; then PASSED=1; fi
-
+  if [ "$KAPPA" != "" ]; then
+    VAL=`grep -E 'maximum value of kappa[[:space:]]+kernel' OUTPUT_FILES/output_solver.txt | cut -d = -f 2 | tr -d ' '`
+    echo "kernel kappa : $VAL"
+    echo "" | awk '{diff=ex-val;diff_abs=(diff >= 0)? diff:-diff;diff_rel=diff_abs/ex;print "  value: expected = "ex" gotten = "val" - difference absolute = "diff_abs" relative = "diff_rel; if (diff_rel>0.0001){print "  failed"; exit 1;}else{print "  good"; exit 0;} }' ex=$KAPPA val=$VAL
+    if [[ $? -ne 0 ]]; then PASSED=1; fi
+  fi
+  # checks mu kernel value (if available for elastic kernel)
+  if [ "$MU" != "" ]; then
+    VAL=`grep -E 'maximum value of mu[[:space:]]+kernel' OUTPUT_FILES/output_solver.txt | cut -d = -f 2 | tr -d ' '`
+    echo "kernel mu    : $VAL"
+    echo "" | awk '{diff=ex-val;diff_abs=(diff >= 0)? diff:-diff;diff_rel=diff_abs/ex;print "  value: expected = "ex" gotten = "val" - difference absolute = "diff_abs" relative = "diff_rel; if (diff_rel>0.0001){print "  failed"; exit 1;}else{print "  good"; exit 0;} }' ex=$MU val=$VAL
+    if [[ $? -ne 0 ]]; then PASSED=1; fi
+  fi
   # overall pass
   if [[ $PASSED -ne 0 ]]; then
     echo "testing kernel values: failed"; exit 1;
@@ -188,7 +199,7 @@ echo
 # seismogram comparison
 if [ "${DEBUG}" == "true" ] || [ "${RUN_KERNEL}" == "true" ]; then
   # no comparisons
-  continue
+  :     # do nothing
 else
   my_test
 fi
@@ -197,13 +208,12 @@ if [[ $? -ne 0 ]]; then exit 1; fi
 
 # kernel test
 if [ "${RUN_KERNEL}" == "true" ]; then
-  # homogeneous halfspace
-  if [ "$TESTDIR" == "EXAMPLES/applications/homogeneous_halfspace/" ]; then
-    # checks rho/kappa/mu kernel value outputs
-    RHO=3.18576676E-09
-    KAPPA=9.48281809E-09
-    MU=3.89545782E-08
-    my_kernel_test $RHO $KAPPA $MU
+  echo
+  echo "directory: `pwd`"
+  echo
+  if [ "$TESTDIR" == "EXAMPLES/applications/homogeneous_halfspace/" ] || \
+     [ "$TESTDIR" == "EXAMPLES/applications/homogeneous_acoustic/" ]; then
+    my_kernel_test
   fi
 fi
 # checks exit code
