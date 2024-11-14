@@ -22,19 +22,19 @@ echo
 
 # bash function for checking seismogram output with reference solutions
 my_test(){
-  echo "**********************************************************";echo "**********************************************************"
+  echo "######################################################################################################################"
   echo "testing seismograms"
   ln -s $WORKDIR/utils/scripts/compare_seismogram_correlations.py
   ./compare_seismogram_correlations.py REF_SEIS/ OUTPUT_FILES/
   if [[ $? -ne 0 ]]; then exit 1; fi
   ./compare_seismogram_correlations.py REF_SEIS/ OUTPUT_FILES/ | grep min/max | cut -d \| -f 3 | awk '{print "correlation:",$1; if ($1 < 0.999 ){print $1,"failed"; exit 1;}else{ print $1,"good"; exit 0;}}'
   if [[ $? -ne 0 ]]; then exit 1; fi
-  echo "**********************************************************";echo "**********************************************************"
+  echo "######################################################################################################################"
 }
 
 my_kernel_test(){
   # kernel value test - checks rho/kappa/mu kernel value outputs
-  echo "**********************************************************";echo "**********************************************************"
+  echo "######################################################################################################################"
   echo "testing kernel values"
   file_ref=REF_KERNEL/output_solver.txt
   file_out=output.log        # captures the OUTPUT_FILES/output_solver.txt when running solver since IMAIN was set to standard out
@@ -82,7 +82,7 @@ my_kernel_test(){
   else
     echo "testing kernel values: all good"
   fi
-  echo "**********************************************************";echo "**********************************************************"
+  echo "######################################################################################################################"
 }
 
 # test example

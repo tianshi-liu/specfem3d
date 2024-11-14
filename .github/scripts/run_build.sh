@@ -60,6 +60,18 @@ else
   hip=()
 fi
 
+## special testflags
+if [ "${TESTFLAGS}" == "check-mcmodel-medium" ]; then
+  # note: this is a work-around as using the 'env:' parameter in the workflow 'CI.yml' with TESTFLAGS: FLAGS_CHECK=".."
+  #       won't work as the FLAGS_CHECK string will then get split up and ./configure .. complains about unknown parameters.
+  #       here, we re-define TESTFLAGS with a single quote around FLAGS_CHECK=".." to avoid the splitting.
+  # use FLAGS_CHECK
+  flags=(FLAGS_CHECK="-O3 -mcmodel=medium -std=f2008 -Wall -Wno-do-subscript -Wno-conversion -Wno-maybe-uninitialized")
+  TESTFLAGS=""  # reset
+else
+  flags=()
+fi
+
 # configuration
 echo
 echo "configuration:"
@@ -72,6 +84,7 @@ set -- ${TESTFLAGS}
 "${adios[@]}" \
 "${hdf[@]}" \
 "${hip[@]}" \
+"${flags[@]}" \
 FC=gfortran MPIFC=mpif90 CC=gcc "$@"
 
 # checks
