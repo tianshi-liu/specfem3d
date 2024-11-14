@@ -209,15 +209,37 @@ if [[ $? -ne 0 ]]; then exit 1; fi
 # kernel test
 if [ "${RUN_KERNEL}" == "true" ]; then
   echo
-  echo "directory: `pwd`"
+  echo "kernel test directory: `pwd`"
   echo
-  if [ "$TESTDIR" == "EXAMPLES/applications/homogeneous_halfspace/" ] || \
-     [ "$TESTDIR" == "EXAMPLES/applications/homogeneous_acoustic/" ]; then
-    my_kernel_test
-  fi
+  my_kernel_test
+
+  # re-run kernel test w/ UNDO_ATT
+  # clean up
+  rm -rf OUTPUT_FILES/
+
+  # w/ undoatt iteration
+  # turns on UNDO_ATTENUATION_AND_OR_PML
+  sed -i "s:^UNDO_ATTENUATION_AND_OR_PML .*:UNDO_ATTENUATION_AND_OR_PML = .true.:" DATA/Par_file
+  echo
+  echo "run kernel w/ UNDO_ATTENUATION_AND_OR_PML"
+  echo
+
+  # use kernel script
+  ./run_this_example_kernel.sh
+  # checks exit code
+  if [[ $? -ne 0 ]]; then exit 1; fi
+
+  # simulation done
+  echo
+  echo "simulation done: `pwd`"
+  echo `date`
+  echo
+
+  # kernel test
+  my_kernel_test
+  # checks exit code
+  if [[ $? -ne 0 ]]; then exit 1; fi
 fi
-# checks exit code
-if [[ $? -ne 0 ]]; then exit 1; fi
 
 # cleanup
 rm -rf OUTPUT_FILES/
