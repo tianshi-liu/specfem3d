@@ -439,8 +439,15 @@ jobs:
     - name: Run test kernel
       env:
         TESTDIR: EXAMPLES/applications/homogeneous_acoustic/
-        GPU: true
         RUN_KERNEL: true
+      run: ./.github/scripts/run_tests.sh
+      shell: bash
+
+    - name: Run test kernel w/ GPU
+      env:
+        TESTDIR: EXAMPLES/applications/homogeneous_acoustic/
+        RUN_KERNEL: true
+        GPU: true
       run: ./.github/scripts/run_tests.sh
       shell: bash
 
@@ -469,8 +476,15 @@ jobs:
     - name: Run test kernel
       env:
         TESTDIR: EXAMPLES/applications/homogeneous_halfspace/
-        GPU: true
         RUN_KERNEL: true
+      run: ./.github/scripts/run_tests.sh
+      shell: bash
+
+    - name: Run test kernel w/ GPU
+      env:
+        TESTDIR: EXAMPLES/applications/homogeneous_halfspace/
+        RUN_KERNEL: true
+        GPU: true
       run: ./.github/scripts/run_tests.sh
       shell: bash
 
@@ -612,7 +626,7 @@ jobs:
 
     - name: Run build
       env:
-        TESTFLAGS: "FLAGS_CHECK='-O3 -mcmodel=medium -std=f2008 -Wall -Wno-do-subscript -Wno-conversion -Wno-maybe-uninitialized'"
+        TESTFLAGS: 'FLAGS_CHECK="-O3 -mcmodel=medium -std=f2008 -Wall -Wno-do-subscript -Wno-conversion -Wno-maybe-uninitialized"'
       run: ./.github/scripts/run_build.sh
       shell: bash
 

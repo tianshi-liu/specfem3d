@@ -22,21 +22,20 @@ echo
 
 # bash function for checking seismogram output with reference solutions
 my_test(){
-  echo "*******************"
+  echo "*******************";echo "*******************";echo "*******************"
   echo "testing seismograms"
-  echo "*******************"
   ln -s $WORKDIR/utils/scripts/compare_seismogram_correlations.py
   ./compare_seismogram_correlations.py REF_SEIS/ OUTPUT_FILES/
   if [[ $? -ne 0 ]]; then exit 1; fi
   ./compare_seismogram_correlations.py REF_SEIS/ OUTPUT_FILES/ | grep min/max | cut -d \| -f 3 | awk '{print "correlation:",$1; if ($1 < 0.999 ){print $1,"failed"; exit 1;}else{ print $1,"good"; exit 0;}}'
   if [[ $? -ne 0 ]]; then exit 1; fi
+  echo "*******************";echo "*******************";echo "*******************"
 }
 
 my_kernel_test(){
   # kernel value test - checks rho/kappa/mu kernel value outputs
-  echo "*********************"
+  echo "*********************";echo "*********************";echo "*********************"
   echo "testing kernel values"
-  echo "*********************"
   file_ref=REF_KERNEL/output_solver.txt
   file_out=output.log        # captures the OUTPUT_FILES/output_solver.txt when running solver since IMAIN was set to standard out
   if [ ! -e $file_ref ]; then echo "Please check if file $file_ref exists..."; ls -alR ./; exit 1; fi
@@ -83,6 +82,7 @@ my_kernel_test(){
   else
     echo "testing kernel values: all good"
   fi
+  echo "*********************";echo "*********************";echo "*********************"
 }
 
 # test example
@@ -92,7 +92,7 @@ cd $dir
 # limit time steps for testing
 sed -i "s:^NSTEP .*:NSTEP    = 200:" DATA/Par_file
 # shortens output interval to avoid timeouts
-sed -i "s:^NTSTEP_BETWEEN_OUTPUT_INFO .*:NTSTEP_BETWEEN_OUTPUT_INFO    = 50:" DATA/Par_file
+sed -i "s:^NTSTEP_BETWEEN_OUTPUT_INFO .*:NTSTEP_BETWEEN_OUTPUT_INFO    = 100:" DATA/Par_file
 
 # limit time steps for specific examples
 # simple mesh example
@@ -160,11 +160,12 @@ if [ "$TESTDIR" == "EXAMPLES/applications/meshfem3D_examples/sep_bathymetry/" ];
   sed -i "s:^NSTEP .*:NSTEP    = 1000:" DATA/Par_file
 fi
 
-# hdf5 i/o example
+## hdf5 i/o example
 if [[ "${TEST}" == *"with-hdf5"* ]]; then
   echo
   echo "test run: ${TEST}"
   echo
+  # turns on HDF5
   echo "turning on HDF5"
   sed -i "s:^HDF5_ENABLED .*:HDF5_ENABLED    = .true.:" DATA/Par_file
   sed -i "s:^HDF5_FOR_MOVIES .*:HDF5_FOR_MOVIES    = .true.:" DATA/Par_file
@@ -173,11 +174,18 @@ if [[ "${TEST}" == *"with-hdf5"* ]]; then
   cp -v run_this_example_HDF5_IO_server.sh run_this_example.sh
 fi
 
-# adios
+## adios
 if [ "${ADIOS2}" == "true" ]; then
   # turns on ADIOS
   echo "turning on ADIOS"
   sed -i "s:^ADIOS_ENABLED .*:ADIOS_ENABLED = .true.:" DATA/Par_file
+fi
+
+## GPU
+if [ "${GPU}" == "true" ]; then
+  # turns on GPU
+  echo "turning on GPU"
+  sed -i "s:^GPU_MODE .*:GPU_MODE = .true.:" DATA/Par_file
 fi
 
 # save Par_file state
@@ -216,40 +224,20 @@ if [ "${RUN_KERNEL}" == "true" ]; then
   my_kernel_test
   # checks exit code
   if [[ $? -ne 0 ]]; then exit 1; fi
-
   # clean up
   rm -rf OUTPUT_FILES/ SEM/ output.log
 
-  # re-run kernel test w/ GPU_MODE
-  if [ "${GPU}" == "true" ]; then
-    # turns on GPU
-    echo "turning on GPU"
-    sed -i "s:^GPU_MODE .*:GPU_MODE = .true.:" DATA/Par_file
-    # use kernel script
-    ./run_this_example_kernel.sh | tee output.log
-    # checks exit code
-    if [[ $? -ne 0 ]]; then exit 1; fi
-    # kernel test
-    my_kernel_test
-    # checks exit code
-    if [[ $? -ne 0 ]]; then exit 1; fi
-    # clean up
-    rm -rf OUTPUT_FILES/ SEM/ output.log
-  fi
-
-  # kernel test w/ UNDO_ATT
-  # w/ undoatt iteration
+  # re-run kernel test w/ UNDO_ATT
   echo
   echo "*****************************************"
   echo "run kernel w/ UNDO_ATTENUATION_AND_OR_PML"
   echo "*****************************************"
   echo
-  # restore original Par_file
-  cp -v DATA/Par_file.bak DATA/Par_file
 
   # turns on UNDO_ATTENUATION_AND_OR_PML
   echo "turning on UNDO_ATTENUATION_AND_OR_PML"
   sed -i "s:^UNDO_ATTENUATION_AND_OR_PML .*:UNDO_ATTENUATION_AND_OR_PML = .true.:" DATA/Par_file
+
   # use kernel script
   ./run_this_example_kernel.sh | tee output.log
   # checks exit code
@@ -258,26 +246,10 @@ if [ "${RUN_KERNEL}" == "true" ]; then
   my_kernel_test
   # checks exit code
   if [[ $? -ne 0 ]]; then exit 1; fi
-  # clean up
-  rm -rf OUTPUT_FILES/ SEM/ output.log
-
-  # re-run kernel test w/ GPU_MODE
-  if [ "${GPU}" == "true" ]; then
-    # turns on GPU
-    echo "turning on GPU"
-    sed -i "s:^GPU_MODE .*:GPU_MODE = .true.:" DATA/Par_file
-    # use kernel script
-    ./run_this_example_kernel.sh | tee output.log
-    # checks exit code
-    if [[ $? -ne 0 ]]; then exit 1; fi
-    # kernel test
-    my_kernel_test
-    # checks exit code
-    if [[ $? -ne 0 ]]; then exit 1; fi
-    # clean up
-    rm -rf OUTPUT_FILES/ SEM/ output.log
-  fi
 fi
+
+# restore original Par_file
+cp -v DATA/Par_file.bak DATA/Par_file
 
 # cleanup
 rm -rf OUTPUT_FILES/
