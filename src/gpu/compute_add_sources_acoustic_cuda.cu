@@ -230,7 +230,7 @@ void FC_FUNC_(add_sources_ac_sim_2_or_3_cuda,
   int it_index = *NTSTEP_BETWEEN_READ_ADJSRC - (*it-1) % *NTSTEP_BETWEEN_READ_ADJSRC - 1 ;
 
   // copies extracted array values onto GPU
-  if ( (*it-1) % *NTSTEP_BETWEEN_READ_ADJSRC==0){
+  if ( (*it-1) % *NTSTEP_BETWEEN_READ_ADJSRC == 0){
     // note: field declaration is only equal to realw if NB_RUNS_ACOUSTIC_GPU == 1.
     //       for any other setting of NB_RUNS_ACOUSTIC_GPU, the compilation would fail for
     //          gpuMemcpy_todevice_field(mp->d_source_adjoint,h_source_adjoint,mp->nadj_rec_local*NDIM*(*NTSTEP_BETWEEN_READ_ADJSRC));

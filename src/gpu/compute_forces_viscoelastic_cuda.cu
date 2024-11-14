@@ -145,7 +145,7 @@ void Kernel_2(int nb_blocks_to_compute,Mesh* mp,int d_iphase,realw d_deltat,
   }
 
   // cuda kernel call
-  if (ATTENUATION ){
+  if (ATTENUATION){
     TRACE("\tKernel_2: Kernel_2_att_impl");
     // compute kernels with attenuation
     // forward wavefields -> FORWARD_OR_ADJOINT == 1
@@ -443,7 +443,7 @@ void Kernel_2(int nb_blocks_to_compute,Mesh* mp,int d_iphase,realw d_deltat,
         // backward/reconstructed wavefields -> FORWARD_OR_ADJOINT == 3
 #ifdef USE_CUDA
         if (run_cuda){
-          Kernel_2_noatt_ani_impl<<< grid,threads,0,mp->compute_stream>>>( nb_blocks_to_compute,
+          Kernel_2_noatt_ani_impl<<<grid,threads,0,mp->compute_stream>>>( nb_blocks_to_compute,
                                                                            d_ibool,
                                                                            mp->d_phase_ispec_inner_elastic,mp->num_phase_ispec_elastic,
                                                                            d_iphase,
@@ -604,7 +604,7 @@ void Kernel_2(int nb_blocks_to_compute,Mesh* mp,int d_iphase,realw d_deltat,
           // backward/reconstructed wavefields -> FORWARD_OR_ADJOINT == 3
 #ifdef USE_CUDA
           if (run_cuda){
-            Kernel_2_noatt_iso_grav_impl<<< grid,threads,0,mp->compute_stream>>>(nb_blocks_to_compute,
+            Kernel_2_noatt_iso_grav_impl<<<grid,threads,0,mp->compute_stream>>>(nb_blocks_to_compute,
                                                                                  d_ibool,
                                                                                  mp->d_phase_ispec_inner_elastic,mp->num_phase_ispec_elastic,
                                                                                  d_iphase,
@@ -736,7 +736,7 @@ void Kernel_2(int nb_blocks_to_compute,Mesh* mp,int d_iphase,realw d_deltat,
             // backward/reconstructed wavefields -> FORWARD_OR_ADJOINT == 3
 #ifdef USE_CUDA
             if (run_cuda){
-              Kernel_2_noatt_iso_col_impl<<< grid,threads,0,mp->compute_stream>>>( nb_blocks_to_compute,
+              Kernel_2_noatt_iso_col_impl<<<grid,threads,0,mp->compute_stream>>>( nb_blocks_to_compute,
                                                                                    d_ibool,
                                                                                    mp->d_phase_ispec_inner_elastic,mp->num_phase_ispec_elastic,
                                                                                    d_iphase,
@@ -856,7 +856,7 @@ void Kernel_2(int nb_blocks_to_compute,Mesh* mp,int d_iphase,realw d_deltat,
               // backward/reconstructed wavefields -> FORWARD_OR_ADJOINT == 3
 #ifdef USE_CUDA
               if (run_cuda){
-                Kernel_2_noatt_iso_strain_impl<<< grid,threads,0,mp->compute_stream>>>(nb_blocks_to_compute,
+                Kernel_2_noatt_iso_strain_impl<<<grid,threads,0,mp->compute_stream>>>(nb_blocks_to_compute,
                                                                                        d_ibool,
                                                                                        mp->d_phase_ispec_inner_elastic,
                                                                                        mp->num_phase_ispec_elastic,
@@ -1023,7 +1023,7 @@ void Kernel_2(int nb_blocks_to_compute,Mesh* mp,int d_iphase,realw d_deltat,
                 // backward/reconstructed wavefields -> FORWARD_OR_ADJOINT == 3
 #ifdef USE_CUDA
                 if (run_cuda){
-                  Kernel_2_noatt_iso_impl<<< grid,threads,0,mp->compute_stream>>>(nb_blocks_to_compute,
+                  Kernel_2_noatt_iso_impl<<<grid,threads,0,mp->compute_stream>>>(nb_blocks_to_compute,
                                                                                   d_ibool,
                                                                                   mp->d_phase_ispec_inner_elastic,
                                                                                   mp->num_phase_ispec_elastic,

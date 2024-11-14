@@ -124,9 +124,28 @@ typedef double realw;
 #endif
 
 // maximum function
+#if !defined(MAX)
 #define MAX(x,y)     (((x) < (y)) ? (y) : (x))
+#endif
 // minimum function
+#if !defined(MIN)
 #define MIN(a,b)     (((a) > (b)) ? (b) : (a))
+#endif
+
+// HIP
+#ifdef USE_HIP
+// for HIP-CPU installation
+#if defined(__HIP_CPU_RT__)
+//#pragma message ("\nCompiling with: HIP-CPU enabled\n")
+// forces __forceinline__ keyword to be inline to avoid "duplicate symbol.." linking errors
+#if defined(__forceinline__)
+#undef __forceinline__
+#endif
+//#define __forceinline__ inline
+// or
+#define __forceinline__ __attribute__((always_inline)) inline
+#endif
+#endif
 
 /* ----------------------------------------------------------------------------------------------- */
 
@@ -260,21 +279,27 @@ typedef double realw;
 
 /* ----------------------------------------------------------------------------------------------- */
 
-// type of "working" variables: see also CUSTOM_REAL
-// double precision temporary variables leads to 10% performance decrease
-// in Kernel_2_impl (not very much..)
-typedef float realw;
-
 // textures
 // note: texture templates are supported only for CUDA versions <= 11.x
 //       since CUDA 12.x, these are deprecated and texture objects should be used instead
 //       see: https://developer.nvidia.com/blog/cuda-pro-tip-kepler-texture-objects-improve-performance-and-flexibility/
+#if CUSTOM_REAL == 4
 #if defined(USE_TEXTURES_FIELDS) || defined(USE_TEXTURES_CONSTANTS)
 #ifdef USE_CUDA
 typedef texture<float, cudaTextureType1D, cudaReadModeElementType> realw_texture;
 #endif
 #ifdef USE_HIP
 typedef texture<float, hipTextureType1D, hipReadModeElementType> realw_texture;
+#endif
+#endif
+#elif CUSTOM_REAL == 8
+#if defined(USE_TEXTURES_FIELDS) || defined(USE_TEXTURES_CONSTANTS)
+#ifdef USE_CUDA
+typedef texture<double, cudaTextureType1D, cudaReadModeElementType> realw_texture;
+#endif
+#ifdef USE_HIP
+typedef texture<double, hipTextureType1D, hipReadModeElementType> realw_texture;
+#endif
 #endif
 #endif
 
