@@ -127,12 +127,15 @@ def download_buildings(mesh_area: np.array):
     print("")
 
     # define a bounding box
-    north, south, east, west = lat_max, lat_min, lon_max, lon_min
-    target_area = (north, south, east, west)
+    #north, south, east, west = lat_max, lat_min, lon_max, lon_min
+    #target_area = (north, south, east, west)
+    # new version: uses bounding box (left, bottom, right, top)
+    target_area = (lon_min, lat_min, lon_max, lat_max)
 
     # configuration
     ox.settings.use_cache = True
     ox.settings.log_console = True
+    #ox.settings.max_query_area_size = 10 * 2500000000.0    # manual increase of default query size to reduce url requests
 
     if 1 == 0:
         # get graph
@@ -265,101 +268,205 @@ def prepare_osm_building_data(gdf):
         print("  updated number of usable buildings: ",gdf.shape[0])
         print("")
 
-    print("  checking for valid data entries...")
+    # clear out building entries without any height infos
+    print("  clearing void data entries...")
+    num_entries = len(gdf)
+    icount = 0
+    for row in gdf.itertuples():
+        found = False
+        if hasattr(row, 'height'): found = True
+        if hasattr(row, 'building:height'): found = True
+        if hasattr(row, 'building:levels'): found = True
+        if hasattr(row, 'roof:height'): found = True
+        if hasattr(row, 'roof:levels'): found = True
+
+        # remove entry if no relevant infos found
+        if not found:
+            gdf = gdf.drop(row.Index)
+            icount += 1
+    print(f"  cleared {icount} entries out of {num_entries}")
     print("")
+
+    print("  checking for valid data entries...")
+
+    # number to output in steps of 10/100/1000 depending on how large the number of entries is
+    num_entries = len(gdf)
+    if num_entries > 100000:
+        noutput_info = min(10000,int(10**np.floor(np.log10(num_entries))))
+    else:
+        noutput_info = min(1000,int(10**np.floor(np.log10(num_entries))))
 
     # makes sure that the building information related to numbers can be read in as a float or as NaN.
     # info tags that are strings won't need to be changed here.
-    #
-    # iterates over each row in the GeoDataFrame
-    icount = 0
-    for index, obj in gdf.iterrows():
-        # counter
-        icount += 1
 
-        # check height
-        val = obj['height']
-        if isinstance(val,str):
-            # shorten string, for example: "1.0;2.0" -> "1.0"
-            if val.find(";") >= 0: val = val[0:val.find(";")]
-            if val.find("'") >= 0: val = val[0:val.find("'")]
-            # check if its a valid number, for example "16.2" -> "162" -> yes, "q" -> "q" -> no
+    # function to clean and convert values
+    def clean_value(val):
+        if isinstance(val, str):
+            # Shorten string to first valid substring
+            val = val.split(';')[0].split("'")[0]
+            # Check if the value is a valid number
             if val.replace(".", "", 1).isdigit():
-                h = float(val)
+                return float(val)
             else:
-                h = np.nan
+                return np.nan
         else:
-            h = val
-        gdf.at[index,'height'] = h
+            return val
 
-        # check building height
-        val = obj['building:height']
-        if isinstance(val,str):
-            # shorten string, for example: "1.0;2.0" -> "1.0"
-            if val.find(";") >= 0: val = val[0:val.find(";")]
-            if val.find("'") >= 0: val = val[0:val.find("'")]
-            # check if its a valid number, for example "16.2" -> "162" -> yes, "q" -> "q" -> no
-            if val.replace(".", "", 1).isdigit():
-                h = float(val)
-            else:
-                h = np.nan
-        else:
-            h = val
-        gdf.at[index,'building:height'] = h
+    # Apply the cleaning function to the 'height',.. column using apply
+    gdf['height'] = gdf['height'].apply(clean_value)
+    gdf['building:height'] = gdf['building:height'].apply(clean_value)
+    gdf['building:levels'] = gdf['building:levels'].apply(clean_value)
+    gdf['roof:levels'] = gdf['roof:levels'].apply(clean_value)
+    gdf['roof:direction'] = gdf['roof:direction'].apply(clean_value)
 
-        # check levels
-        val = obj['building:levels']
-        if isinstance(val,str):
-            # shorten string, for example: "1;2" -> "1"
-            if val.find(";") >= 0: val = val[0:val.find(";")]
-            if val.find("'") >= 0: val = val[0:val.find("'")]
-            # check if its a valid number, for example "16.2" -> "162" -> yes, "q" -> "q" -> no
-            if val.replace(".", "", 1).isdigit():
-                lev = float(val)
-            else:
-                lev = np.nan
-        else:
-            lev = val
-        gdf.at[index,'building:levels'] = lev
+    # function to adjust direction values
+    def clean_direction(d):
+        if not np.isnan(d):  # Check if the value is not NaN
+            if d < 0.0:
+                d += 360.0
+            elif d > 360.0:
+                d -= 360.0
+        return d
 
-        # check roof levels
-        val = obj['roof:levels']
-        if isinstance(val,str):
-            # shorten string, for example: "1;2" -> "1"
-            if val.find(";") >= 0: val = val[0:val.find(";")]
-            if val.find("'") >= 0: val = val[0:val.find("'")]
-            # check if its a valid number, for example "16.2" -> "162" -> yes, "q" -> "q" -> no
-            if val.replace(".", "", 1).isdigit():
-                lev = float(val)
-            else:
-                lev = np.nan
-        else:
-            lev = val
-        gdf.at[index,'roof:levels'] = lev
+    # check roof direction is within [0,360]
+    gdf['roof:direction'] = gdf['roof:direction'].apply(clean_direction)
 
-        # check roof levels
-        val = obj['roof:direction']
-        if isinstance(val,str):
-            # shorten string, for example: "1;2" -> "1"
-            if val.find(";") >= 0: val = val[0:val.find(";")]
-            if val.find("'") >= 0: val = val[0:val.find("'")]
-            # check if its a valid number, for example "16.2" -> "162" -> yes, "q" -> "q" -> no
-            if val.replace(".", "", 1).isdigit():
-                d = float(val)
-            else:
-                d = np.nan
-        else:
-            d = val
-        # directions seem to be within the range [0,360]
-        if not np.isnan(d):
-            if d < 0.0: d += 360.0
-            if d > 360.0: d -= 360.0
-        # re-set direction value
-        gdf.at[index,'roof:direction'] = d
+    if 1 == 0:
+        # explicit looping
+        # note: using iterrows() leads to problems as for some entries, the index gets converted
+        #       and calling gdf.at[index,'height'] = h fails...
+        #       instead one can use itertuples() and check if the row has the attribute, but this is quite slow.
 
-        #debug
-        #name = "" if str(obj['name']) == 'nan' else obj['name']
-        #print("debug: building ",icount,"H/B:H/B:L/B:P ",obj['height'],obj['building:height'],obj['building:levels'],obj['building:part'],name)
+        # iterates over each row in the GeoDataFrame
+        icount = 0
+
+        #for index, obj in gdf.iterrows():
+        for row in gdf.itertuples():
+            # counter
+            icount += 1
+
+            # user output
+            if icount % noutput_info == 0:
+                print("    entry: {} out of {}".format(icount,num_entries))
+
+            # check height
+            if hasattr(row, 'height'):
+                #val = obj['height']
+                val = getattr(row, 'height')
+                if isinstance(val,str):
+                    # shorten string, for example: "1.0;2.0" -> "1.0"
+                    if val.find(";") >= 0: val = val[0:val.find(";")]
+                    if val.find("'") >= 0: val = val[0:val.find("'")]
+                    # check if its a valid number, for example "16.2" -> "162" -> yes, "q" -> "q" -> no
+                    if val.replace(".", "", 1).isdigit():
+                        h = float(val)
+                    else:
+                        h = np.nan
+                else:
+                    h = val
+                #gdf.at[index,'height'] = h
+                gdf.loc[row.Index, 'height'] = h
+
+            #try:
+            #except:
+            #    # geodataframe entry misses column height - delete this entry
+            #    #gdf = gdf.drop(index)
+            #    #debug
+            #    print("warning: encountered wrong index: ",index," and value h: ",h)
+            #    pass
+            #    #continue  # skip to next object
+
+            # check building height
+            #if hasattr(row, 'building:height'):
+            if hasattr(obj, 'building:height'):
+                val = obj['building:height']
+                #val = getattr(row, 'building:height')
+
+                if isinstance(val,str):
+                    # shorten string, for example: "1.0;2.0" -> "1.0"
+                    if val.find(";") >= 0: val = val[0:val.find(";")]
+                    if val.find("'") >= 0: val = val[0:val.find("'")]
+                    # check if its a valid number, for example "16.2" -> "162" -> yes, "q" -> "q" -> no
+                    if val.replace(".", "", 1).isdigit():
+                        h = float(val)
+                    else:
+                        h = np.nan
+                else:
+                    h = val
+                gdf.at[index,'building:height'] = h
+                #gdf.loc[row.Index, 'building:height'] = h
+
+            # check levels
+            #if hasattr(row, 'building:levels'):
+            if hasattr(obj, 'building:levels'):
+                val = obj['building:levels']
+                #val = getattr(row, 'building:levels')
+
+                if isinstance(val,str):
+                    # shorten string, for example: "1;2" -> "1"
+                    if val.find(";") >= 0: val = val[0:val.find(";")]
+                    if val.find("'") >= 0: val = val[0:val.find("'")]
+                    # check if its a valid number, for example "16.2" -> "162" -> yes, "q" -> "q" -> no
+                    if val.replace(".", "", 1).isdigit():
+                        lev = float(val)
+                    else:
+                        lev = np.nan
+                else:
+                    lev = val
+                gdf.at[index,'building:levels'] = lev
+                #gdf.loc[row.Index, 'building:levels'] = lev
+
+            # check roof levels
+            #if hasattr(row, 'roof:levels'):
+            if hasattr(obj, 'roof:levels'):
+                val = obj['roof:levels']
+                #val = getattr(row, 'roof:levels')
+
+                if isinstance(val,str):
+                    # shorten string, for example: "1;2" -> "1"
+                    if val.find(";") >= 0: val = val[0:val.find(";")]
+                    if val.find("'") >= 0: val = val[0:val.find("'")]
+                    # check if its a valid number, for example "16.2" -> "162" -> yes, "q" -> "q" -> no
+                    if val.replace(".", "", 1).isdigit():
+                        lev = float(val)
+                    else:
+                        lev = np.nan
+                else:
+                    lev = val
+                gdf.at[index,'roof:levels'] = lev
+                #gdf.loc[row.Index, 'roof:levels'] = lev
+
+            # check roof direction
+            #if hasattr(row, 'roof:direction'):
+            if hasattr(obj, 'roof:direction'):
+                val = obj['roof:direction']
+                #val = getattr(row, 'roof:direction')
+
+                if isinstance(val,str):
+                    # shorten string, for example: "1;2" -> "1"
+                    if val.find(";") >= 0: val = val[0:val.find(";")]
+                    if val.find("'") >= 0: val = val[0:val.find("'")]
+                    # check if its a valid number, for example "16.2" -> "162" -> yes, "q" -> "q" -> no
+                    if val.replace(".", "", 1).isdigit():
+                        d = float(val)
+                    else:
+                        d = np.nan
+                else:
+                    d = val
+
+                # directions seem to be within the range [0,360]
+                if not np.isnan(d):
+                    if d < 0.0: d += 360.0
+                    if d > 360.0: d -= 360.0
+
+                # re-set direction value
+                gdf.at[index,'roof:direction'] = d
+                #gdf.loc[row.Index, 'roof:direction'] = d
+
+            #debug
+            #name = "" if str(obj['name']) == 'nan' else obj['name']
+            #print("debug: building ",icount,"H/B:H/B:L/B:P ",obj['height'],obj['building:height'],obj['building:levels'],obj['building:part'],name)
+        print("")
 
     # plot footprints
     if 1 == 0:
@@ -631,9 +738,11 @@ def get_building_height(obj):
     #has_height_info = False
 
     # check building height infos
+    found = False
     h = obj['building:height']
     if not np.isnan(h):
           height = h
+          found = True
           #debug
           #has_height_info = True
           #name = "" if str(obj['name']) == 'nan' else " - "+obj['name']
@@ -643,6 +752,7 @@ def get_building_height(obj):
         h = obj['height']
         if not np.isnan(h):
               height = h
+              found = True
               #debug
               #has_height_info = True
               #name = "" if str(obj['name']) == 'nan' else " - "+obj['name']
@@ -652,13 +762,18 @@ def get_building_height(obj):
             lev = obj['building:levels']
             if not np.isnan(lev):
                 height = lev * building_height_min
+                found = True
                 #debug
                 #has_height_info = True
                 #name = "" if str(obj['name']) == 'nan' else " - "+obj['name']
                 #print("debug: obj found building:levels ",obj['building:levels'],name)
 
     # checks
-    if np.isnan(height): height = building_height_min
+    if np.isnan(height):
+        height = building_height_min
+
+    if height == 0.0:
+        height = building_height_min
 
     # sets a minimum building height if specified height is < 1m
     if height <= 1.0: height = 1.0

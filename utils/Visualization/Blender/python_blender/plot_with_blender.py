@@ -90,6 +90,10 @@ camera_elevation_offset = 0.15
 camera_y_offset = -0.7
 camera_angle_depth_degree = 75.0
 
+# camera perspective
+close_up_view = False
+centered_view = False
+
 # center point to focus camera view on
 x_center = 0.0
 y_center = 0.0
@@ -1213,13 +1217,14 @@ def get_mesh_elevation_at_origin() -> float:
 
     return elevation
 
-def add_camera(title: str="", close_up_view: bool=False) -> None:
+def add_camera(title: str="") -> None:
     """
     adds camera object
     """
     global x_center,y_center,z_center
     global camera_y_offset,camera_elevation_offset,camera_angle_depth_degree
     global z_elevation
+    global close_up_view,centered_view
 
     print("  adding camera")
 
@@ -1307,7 +1312,25 @@ def add_camera(title: str="", close_up_view: bool=False) -> None:
                 mat_node.inputs['Roughness'].default_value = 0.25  # shinier, more metallic
                 print("      using metallic buildings")
 
-    if close_up_view:
+    if centered_view:
+        ## centered view
+        # camera location
+        camera_elevation_offset = 4.0
+        x_cam = x_center
+        y_cam = y_center
+        z_cam = z_center + camera_elevation_offset
+        print("    centered scene")
+        print("    center point   : x/y/z = {:.6f} / {:.6f} / {:.6f}".format(x_center,y_center,z_center))
+        print("    camera location: x/y/z = {:.6f} / {:.6f} / {:.6f}".format(x_cam,y_cam,z_cam))
+        print("    camera location relative to mesh elevation: ",z_elevation)
+        # Set camera translation
+        scene.camera.location = (x_cam,y_cam,z_cam)
+        # Set camera rotation in euler angles
+        scene.camera.rotation_mode = 'XYZ'
+        scene.camera.rotation_euler = (0, 0, 0)  # top-down
+        # Set camera fov in degrees
+        scene.camera.data.angle = float(42.0 * DEGREE_TO_RAD)
+    elif close_up_view:
         ## close-up view
         # adjust clip range
         scene.camera.data.clip_start = 0.01
@@ -1372,11 +1395,12 @@ def add_light() -> None:
     light.data.use_contact_shadow = True  # Enable contact shadows
 
 
-def add_plane(close_up_view: bool=False) -> None:
+def add_plane() -> None:
     """
     adds a plane at sea-level
     """
     global use_transparent_sea_level_plane
+    global close_up_view
 
     print("  adding sea-level plane")
     # Create a mesh plane (to capture shadows and indicate sea level)
@@ -1417,12 +1441,14 @@ def add_title(title: str="") -> None:
     """
     adds a title text
     """
+    global centered_view
+
     if len(title) > 0:
         print("  adding text object:")
         print("    title = ",title)
 
         # Create a new text object
-        bpy.ops.object.text_add(location=(-0.3, -1.2, 0.01))  # Adjust the location as needed
+        bpy.ops.object.text_add()
         text_object = bpy.context.object
         text_object.data.body = title  # Set the text content
 
@@ -1440,6 +1466,27 @@ def add_title(title: str="") -> None:
             text_object.data.font = bpy.data.fonts['Arial Regular']
 
         #text_object.data.font = bpy.data.fonts.load("/path/to/your/font.ttf")  # Replace with your font path
+
+        # Adjust the location as needed
+        x_title = -0.3
+        y_title = -1.2
+        z_title = 0.01
+
+        if centered_view:
+            print("    centered text")
+            # get dimensions of text
+            #bbox_center = text_obj.bound_box_center
+            #bbox_size = text_object.dimensions
+            #print("    text dimensions = ",bbox_size[0],"/",bbox_size[1],"/",bbox_size[2])
+            # align to center
+            text_object.data.align_x = 'CENTER'
+            text_object.data.align_y = 'BOTTOM_BASELINE'
+            x_title = 0.0
+            y_title = -0.95
+
+        print("    location = ",x_title,"/",y_title,"/",z_title)
+
+        text_object.location = (x_title, y_title, z_title)
 
         # Set text material
         text_material = bpy.data.materials.new(name="TextMaterial")
@@ -1819,20 +1866,20 @@ def render_image() -> None:
         print("elapsed time for image render is {} min {:0.4f} sec\n".format(min,sec))
 
 
-def render_blender_scene(title: str="", animation: bool=False, close_up_view: bool=False) -> None:
+def render_blender_scene(title: str="", animation: bool=False) -> None:
 
     ## blender scene setup
     print("Setting up blender scene...")
     print("")
 
     ## camera
-    add_camera(title,close_up_view)
+    add_camera(title)
 
     ## light
     add_light()
 
     ## background plane
-    add_plane(close_up_view)
+    add_plane()
 
     # text object
     add_title(title)
@@ -1862,7 +1909,7 @@ def render_blender_scene(title: str="", animation: bool=False, close_up_view: bo
 
 # main routine
 def plot_with_blender(vtk_file: str="", image_title: str="", colormap: int=0, color_max: float=None,
-                      buildings_file: str="", animation: bool=False, close_up_view: bool=False) -> None:
+                      buildings_file: str="", animation: bool=False) -> None:
     """
     renders image for (earth) sphere with textures
     """
@@ -1881,7 +1928,7 @@ def plot_with_blender(vtk_file: str="", image_title: str="", colormap: int=0, co
     add_blender_buildings(buildings_file)
 
     # save blender scene
-    render_blender_scene(image_title,animation,close_up_view)
+    render_blender_scene(image_title,animation)
 
 
 def usage() -> None:
@@ -1897,6 +1944,7 @@ def usage() -> None:
     print("     --color-max               - fixes maximum value of colormap for moviedata to val, e.g., 1.e-7)")
     print("     --buildings               - mesh file (.ply) with buildings to visualize for the area")
     print("     --with-cycles/--no-cycles - turns on/off CYCLES renderer (default is off, using BLENDER_EEVEE)")
+    print("     --centered                - centered camera view (looking from top straight down)")
     print("     --closeup                 - sets camera view closer to center of model")
     print("     --transparent-sea-level   - turns on transparency for sea-level plane")
     print("     --small                   - turns on small images size (400x600px) for preview")
@@ -1915,7 +1963,6 @@ if __name__ == '__main__':
     colormap = -1
     buildings_file = ""
     animation = False
-    close_up_view = False
 
     # reads arguments
     #print("\nnumber of arguments: " + str(len(sys.argv)))
@@ -1930,6 +1977,8 @@ if __name__ == '__main__':
             animation = True
         elif "--buildings=" in arg:
             buildings_file = arg.split('=')[1]
+        elif "--centered" in arg:
+            centered_view = True
         elif "--closeup" in arg:
             close_up_view = True
         elif "--color-max" in arg:
@@ -1983,4 +2032,4 @@ if __name__ == '__main__':
       print("command logged to file: " + filename)
 
     # main routine
-    plot_with_blender(vtk_file,image_title,colormap,color_max,buildings_file,animation,close_up_view)
+    plot_with_blender(vtk_file,image_title,colormap,color_max,buildings_file,animation)
