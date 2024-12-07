@@ -1281,6 +1281,16 @@ def setup_simulation(lon_min,lat_min,lon_max,lat_max):
         lon_min = lon_max
         lon_max = tmp
 
+    # use longitude range in [-180,180]
+    # (there could be issues with determining the correct UTM zone in routine utm.latlon_to_zone_number() below
+    #  if the longitudes are > 180)
+    if lon_min < -180.0 and lon_max < -180.0:
+        lon_min += 360.0
+        lon_max += 360.0
+    if lon_min > 180.0 and lon_max > 180:
+        lon_min -= 360.0
+        lon_max -= 360.0
+
     # get topography data
     xyz_file = get_topo(lon_min,lat_min,lon_max,lat_max)
 
