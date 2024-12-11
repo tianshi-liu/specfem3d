@@ -17,6 +17,7 @@ import sys
 import subprocess
 import math
 import datetime
+import numpy
 
 ## elevation package
 # see: https://github.com/bopen/elevation
@@ -737,8 +738,6 @@ def topo_extract(filename):
     print("extracting interface data for xmeshfem3D ...")
     print("*******************************")
 
-    import numpy
-
     ## shift/downscale topography
     print("  topo shift   = ",toposhift,"(m)")
     print("  scale factor = ",toposcale)
@@ -857,6 +856,16 @@ def update_Mesh_Par_file(dir,lon_min,lat_min,lon_max,lat_max,nx,ny,dx,dy,xyz_fil
 
     # change working directory back to DATA/
     path = dir + '/' + 'DATA/meshfem3D_files/'
+
+    # checks if DATA/meshfem3D_files/ folder available
+    if not os.path.isdir(path):
+        print("#")
+        print("# Info: DATA/meshfem3D_files/ folder not found in current directory,")
+        print("#       will continue without modifying Mesh_Par_file ...")
+        print("# ")
+        return
+
+    # updates Mesh_Par_file
     os.chdir(path)
 
     print("*******************************")
@@ -946,6 +955,16 @@ def update_Par_file(dir):
 
     # change working directory back to DATA/
     path = dir + '/' + 'DATA/'
+
+    # checks if DATA/ folder available
+    if not os.path.isdir(path):
+        print("#")
+        print("# Info: DATA/ folder not found in current directory,")
+        print("#       will continue without modifying Par_file ...")
+        print("# ")
+        return
+
+    # updates Par_file in DATA/ folder
     os.chdir(path)
 
     print("*******************************")
