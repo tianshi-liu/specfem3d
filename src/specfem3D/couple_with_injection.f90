@@ -63,44 +63,48 @@
 
   ! local parameters
   integer :: ier
-  character(len=MAX_STRING_LEN) :: dsmname
+  character(len=MAX_STRING_LEN) :: prname_trac
 
   ! checks if anything to do
   if (.not. IO_compute_task) return
 
-  ! for coupling with EXTERNAL CODE !! CD CD modify here
+  ! for coupling with EXTERNAL CODE
   if (COUPLE_WITH_INJECTION_TECHNIQUE .or. SAVE_RUN_BOUN_FOR_KH_INTEGRAL) then
+    ! user output
     if (myrank == 0) then
       write(IMAIN,*)
       write(IMAIN,*) '**********************************************'
-      write(IMAIN,*) '      **** USING HYBRID METHOD  ****'
+      write(IMAIN,*) '**** USING HYBRID METHOD                  ****'
       write(IMAIN,*) '**********************************************'
       write(IMAIN,*)
-      write(IMAIN,*) ' using coupling with injection technique:'
+      write(IMAIN,*) 'using coupling with injection technique'
       select case(INJECTION_TECHNIQUE_TYPE)
       case (INJECTION_TECHNIQUE_IS_DSM)
-        write(IMAIN,*) ' type of injection technique is DSM'
+        write(IMAIN,*) 'type of injection technique is DSM'
       case (INJECTION_TECHNIQUE_IS_AXISEM)
-        write(IMAIN,*) ' type of injection technique is AXISEM'
+        write(IMAIN,*) 'type of injection technique is AXISEM'
       case (INJECTION_TECHNIQUE_IS_FK)
-        write(IMAIN,*) ' type of injection technique is FK'
+        write(IMAIN,*) 'type of injection technique is FK'
+      case (INJECTION_TECHNIQUE_IS_SPECFEM)
+        write(IMAIN,*) 'type of injection technique is SPECFEM'
       case default
-        stop 'Invalid INJECTION_TECHNIQUE_TYPE chosen, must be 1 == DSM, 2 == AXISEM or 3 == FK'
+        stop 'Invalid INJECTION_TECHNIQUE_TYPE chosen, must be 1 == DSM, 2 == AXISEM, 3 == FK or 4 == SPECFEM'
       end select
-      write(IMAIN,*)
-      write(IMAIN,*) '**********************************************'
       write(IMAIN,*)
       call flush_IMAIN()
     endif
 
-    call create_name_database(dsmname,myrank,TRACTION_PATH)
+    ! creates name for each rank process
+    ! format: {TRACTION_PATH} / proc***_
+    call create_name_database(prname_trac,myrank,TRACTION_PATH)
   endif
 
   ! allocates arrays for coupling
   ! note: num_abs_boundary_faces needs to be set
   if (COUPLE_WITH_INJECTION_TECHNIQUE) then
     ! coupling
-    if (INJECTION_TECHNIQUE_TYPE == INJECTION_TECHNIQUE_IS_DSM) then
+    select case (INJECTION_TECHNIQUE_TYPE)
+    case (INJECTION_TECHNIQUE_IS_DSM)
       ! DSM coupling
       allocate(Veloc_dsm_boundary(3,Ntime_step_dsm,NGLLSQUARE,num_abs_boundary_faces),stat=ier)
       if (ier /= 0) call exit_MPI_without_rank('error allocating array 2190')
@@ -111,15 +115,15 @@
       Tract_dsm_boundary(:,:,:,:) = 0._CUSTOM_REAL
 
       if (old_DSM_coupling_from_Vadim) then
-        open(unit=IIN_veloc_dsm,file=dsmname(1:len_trim(dsmname))//'vel.bin',status='old', &
+        open(unit=IIN_veloc_dsm,file=trim(prname_trac) // 'vel.bin',status='old', &
              action='read',form='unformatted',iostat=ier)
-        open(unit=IIN_tract_dsm,file=dsmname(1:len_trim(dsmname))//'tract.bin',status='old', &
+        open(unit=IIN_tract_dsm,file=trim(prname_trac) // 'tract.bin',status='old', &
              action='read',form='unformatted',iostat=ier)
       else
         !! To verify for NOBU version (normally, remains empty)
       endif
 
-    else if (INJECTION_TECHNIQUE_TYPE == INJECTION_TECHNIQUE_IS_AXISEM) then
+    case (INJECTION_TECHNIQUE_IS_AXISEM)
       ! AxiSEM coupling
       allocate(Veloc_axisem(3,NGLLSQUARE*num_abs_boundary_faces),stat=ier)
       if (ier /= 0) call exit_MPI_without_rank('error allocating array 2192')
@@ -131,17 +135,17 @@
 
       ! user output
       if (myrank == 0) then
-        write(IMAIN,*) '  tractions: opening files ', dsmname(1:len_trim(dsmname))//'sol_axisem'
+        write(IMAIN,*) '  tractions: opening files ', trim(prname_trac) // 'sol_axisem'
         write(IMAIN,*)
         call flush_IMAIN()
       endif
       ! debug
-      !write(*,*) 'OPENING ', dsmname(1:len_trim(dsmname))//'sol_axisem'
+      !write(*,*) 'OPENING ', trim(prname_trac) // 'sol_axisem'
 
-      open(unit=IIN_veloc_dsm,file=dsmname(1:len_trim(dsmname))//'sol_axisem',status='old', &
+      open(unit=IIN_veloc_dsm,file=trim(prname_trac) // 'sol_axisem',status='old', &
            action='read',form='unformatted',iostat=ier)
       if (ier /= 0) then
-        print *,'Error: could not open file ',dsmname(1:len_trim(dsmname))//'sol_axisem'
+        print *,'Error: could not open file ',trim(prname_trac) // 'sol_axisem'
         print *,'Please check if traction file exists for coupling with AxiSEM...'
         stop 'Error opening tractions file proc****_sol_axisem'
       endif
@@ -163,28 +167,32 @@
           !! The unit numbers are here temporary
           ! user output
           if (myrank == 0) then
-            write(IMAIN,*) '  KH integral: opening files ', dsmname(1:len_trim(dsmname))//'axisem_displ_for_int_KH'
+            write(IMAIN,*) '  KH integral: opening files ', trim(prname_trac) // 'axisem_displ_for_int_KH'
             write(IMAIN,*)
             call flush_IMAIN()
           endif
           ! debug
-          !write(*,*) 'OPENING ', dsmname(1:len_trim(dsmname))//'axisem_displ_for_int_KH, and the specfem disp and tract'
+          !write(*,*) 'OPENING ', trim(prname_trac) // 'axisem_displ_for_int_KH, and the specfem disp and tract'
 
-          open(unit=IIN_displ_axisem,file=dsmname(1:len_trim(dsmname))//'axisem_displ_for_int_KH', &
+          open(unit=IIN_displ_axisem,file=trim(prname_trac) // 'axisem_displ_for_int_KH', &
             status='old',action='read',form='unformatted',iostat=ier)
 
-          open(unit=237,file=dsmname(1:len_trim(dsmname))//'specfem_displ_for_int_KH', &
+          open(unit=237,file=trim(prname_trac) // 'specfem_displ_for_int_KH', &
             status='old',action='read',form='unformatted',iostat=ier)
 
-          open(unit=238,file=dsmname(1:len_trim(dsmname))//'specfem_tract_for_int_KH', &
+          open(unit=238,file=trim(prname_trac) // 'specfem_tract_for_int_KH', &
             status='old',action='read',form='unformatted',iostat=ier)
         endif
       endif
-    endif
+
+    case (INJECTION_TECHNIQUE_IS_SPECFEM)
+      ! SPECFEM coupling
+      ! will do main setup in prepare stage when calling routine couple_with_injection_prepare_specfem_files()
+    end select
 
   else
     ! no coupling
-    ! dummy arrays
+    ! dummy arrays (needed as function call arguments)
     allocate(Veloc_dsm_boundary(1,1,1,1),stat=ier)
     if (ier /= 0) call exit_MPI_without_rank('error allocating array 2198')
     allocate(Tract_dsm_boundary(1,1,1,1),stat=ier)
@@ -193,6 +201,10 @@
     if (ier /= 0) call exit_MPI_without_rank('error allocating array 2200')
     allocate(Tract_axisem(1,1),stat=ier)
     if (ier /= 0) call exit_MPI_without_rank('error allocating array 2201')
+    allocate(Veloc_specfem(1,1),stat=ier)
+    if (ier /= 0) call exit_MPI_without_rank('error allocating array 2202')
+    allocate(Tract_specfem(1,1),stat=ier)
+    if (ier /= 0) call exit_MPI_without_rank('error allocating array 2203')
   endif
 
   !! CD CD add this :
@@ -201,15 +213,15 @@
   if (SAVE_RUN_BOUN_FOR_KH_INTEGRAL) then
     ! user output
     if (myrank == 0) then
-      write(IMAIN,*) '  KH integral: opening files ', dsmname(1:len_trim(dsmname))//'specfem_displ_for_int_KH'
+      write(IMAIN,*) '  KH integral: opening files ', trim(prname_trac) // 'specfem_displ_for_int_KH'
       write(IMAIN,*)
       call flush_IMAIN()
     endif
     ! debug
-    !write(*,*) 'OPENING ', dsmname(1:len_trim(dsmname))//'specfem_displ_for_int_KH, and the specfem tract to SAVE IT'
+    !write(*,*) 'OPENING ', trim(prname_trac) // 'specfem_displ_for_int_KH, and the specfem tract to SAVE IT'
 
-    open(unit=237,file=dsmname(1:len_trim(dsmname))//'specfem_displ_for_int_KH',form='unformatted')
-    open(unit=238,file=dsmname(1:len_trim(dsmname))//'specfem_tract_for_int_KH',form='unformatted')
+    open(unit=237,file=trim(prname_trac) // 'specfem_displ_for_int_KH',form='unformatted')
+    open(unit=238,file=trim(prname_trac) // 'specfem_tract_for_int_KH',form='unformatted')
   endif
 
   end subroutine couple_with_injection_setup
@@ -238,204 +250,216 @@
 
   real(kind=CUSTOM_REAL), parameter :: TOL_ZERO_TAKEOFF = 1.e-14
 
-  !  initial setup for future FK3D calculations
+  ! checks if anything to do
+  if (.not. COUPLE_WITH_INJECTION_TECHNIQUE) return
 
-  if (COUPLE_WITH_INJECTION_TECHNIQUE .and. SIMULATION_TYPE == 1) then
+  ! for forward simulation only
+  if (SIMULATION_TYPE /= 1) return
 
+  ! user output
+  if (myrank == 0) then
+    write(IMAIN,*) "preparing injection boundary"
+    call flush_IMAIN()
+  endif
+
+  select case (INJECTION_TECHNIQUE_TYPE)
+  case (INJECTION_TECHNIQUE_IS_FK)
+    ! FK boundary
+    ! initial setup for future FK3D calculations
+    ! get MPI starting time for FK
+    tstart = wtime()
+
+    ! user output
     if (myrank == 0) then
-      write(IMAIN,*) "preparing injection boundary"
+      write(IMAIN,*) "  using FK injection technique"
       call flush_IMAIN()
     endif
 
-    ! FK boundary
-    if (INJECTION_TECHNIQUE_TYPE == INJECTION_TECHNIQUE_IS_FK) then
+    call FindBoundaryBox(Xmin_box, Xmax_box, Ymin_box, Ymax_box, Zmin_box, Zmax_box)
+    call ReadFKModelInput(Xmin_box, Xmax_box, Ymin_box, Ymax_box, Zmin_box, Zmax_box)
 
-      ! get MPI starting time for FK
-      tstart = wtime()
+    ! send FK parameters to others MPI slices
+    call bcast_all_singlei(type_kpsv_fk)
+    call bcast_all_singlei(nlayer)
 
-      call FindBoundaryBox(Xmin_box, Xmax_box, Ymin_box, Ymax_box, Zmin_box, Zmax_box)
+    if (myrank > 0) then
+      allocate(alpha_FK(nlayer), &
+               beta_FK(nlayer), &
+               rho_FK(nlayer), &
+               mu_FK(nlayer), &
+               h_FK(nlayer),stat=ier)
+      if (ier /= 0) call exit_MPI_without_rank('error allocating arrays 2206')
+      alpha_FK(:) = 0._CUSTOM_REAL; beta_FK(:) = 0._CUSTOM_REAL; rho_FK(:) = 0._CUSTOM_REAL
+      mu_FK(:) = 0._CUSTOM_REAL; h_FK(:) = 0._CUSTOM_REAL
+    endif
 
-      call ReadFKModelInput(Xmin_box, Xmax_box, Ymin_box, Ymax_box, Zmin_box, Zmax_box)
+    call bcast_all_cr(alpha_FK, nlayer)
+    call bcast_all_cr(beta_FK, nlayer)
+    call bcast_all_cr(rho_FK, nlayer)
+    call bcast_all_cr(mu_FK, nlayer)
+    call bcast_all_cr(h_FK, nlayer)
 
-      ! send FK parameters to others MPI slices
-      call bcast_all_singlei(type_kpsv_fk)
-      call bcast_all_singlei(nlayer)
+    call bcast_all_singlecr(phi_FK)
+    call bcast_all_singlecr(theta_FK)
 
-      if (myrank > 0) then
-        allocate(alpha_FK(nlayer), &
-                 beta_FK(nlayer), &
-                 rho_FK(nlayer), &
-                 mu_FK(nlayer), &
-                 h_FK(nlayer),stat=ier)
-        if (ier /= 0) call exit_MPI_without_rank('error allocating arrays 2206')
-        alpha_FK(:) = 0._CUSTOM_REAL; beta_FK(:) = 0._CUSTOM_REAL; rho_FK(:) = 0._CUSTOM_REAL
-        mu_FK(:) = 0._CUSTOM_REAL; h_FK(:) = 0._CUSTOM_REAL
-      endif
+    call bcast_all_singlecr(ff0)
+    call bcast_all_singlecr(freq_sampling_fk)
+    call bcast_all_singlecr(amplitude_fk)
 
-      call bcast_all_cr(alpha_FK, nlayer)
-      call bcast_all_cr(beta_FK, nlayer)
-      call bcast_all_cr(rho_FK, nlayer)
-      call bcast_all_cr(mu_FK, nlayer)
-      call bcast_all_cr(h_FK, nlayer)
+    call bcast_all_singlecr(xx0)
+    call bcast_all_singlecr(yy0)
+    call bcast_all_singlecr(zz0)
+    call bcast_all_singlecr(Z_REF_for_FK)
 
-      call bcast_all_singlecr(phi_FK)
-      call bcast_all_singlecr(theta_FK)
+    call bcast_all_singlecr(tt0)
+    call bcast_all_singlecr(tmax_fk)
 
-      call bcast_all_singlecr(ff0)
-      call bcast_all_singlecr(freq_sampling_fk)
-      call bcast_all_singlecr(amplitude_fk)
+    ! converts origin point Z to reference framework depth for FK,
+    ! where top of lower half-space has to be at z==0
+    zz0 = zz0 - Z_REF_for_FK
 
-      call bcast_all_singlecr(xx0)
-      call bcast_all_singlecr(yy0)
-      call bcast_all_singlecr(zz0)
-      call bcast_all_singlecr(Z_REF_for_FK)
+    ! converts to rad
+    phi_FK   = phi_FK * PI/180.d0    ! azimuth
+    theta_FK = theta_FK * PI/180.d0  ! take-off
 
-      call bcast_all_singlecr(tt0)
-      call bcast_all_singlecr(tmax_fk)
+    ! ray parameter p (according to Snell's law: sin(theta1)/v1 == sin(theta2)/v2)
+    if (type_kpsv_fk == 1) then
+      ! P-wave
+      ray_p = sin(theta_FK)/alpha_FK(nlayer)    ! for vp (i.e., alpha)
+    else if (type_kpsv_fk == 2) then
+      ! SV-wave
+      ray_p = sin(theta_FK)/beta_FK(nlayer)     ! for vs (i.e., beta)
+    endif
 
-      ! converts origin point Z to reference framework depth for FK,
-      ! where top of lower half-space has to be at z==0
-      zz0 = zz0 - Z_REF_for_FK
+    ! note: vertical incident (theta==0 -> p==0) is not handled.
+    !       here, it limits ray parameter p to a very small value to handle the calculations
+    if (abs(ray_p) < TOL_ZERO_TAKEOFF) ray_p = sign(TOL_ZERO_TAKEOFF,ray_p)
 
-      ! converts to rad
-      phi_FK   = phi_FK * PI/180.d0    ! azimuth
-      theta_FK = theta_FK * PI/180.d0  ! take-off
+    ! maximum period
+    Tg  = 1.d0 / ff0
 
-      ! ray parameter p (according to Snell's law: sin(theta1)/v1 == sin(theta2)/v2)
-      if (type_kpsv_fk == 1) then
-        ! P-wave
-        ray_p = sin(theta_FK)/alpha_FK(nlayer)    ! for vp (i.e., alpha)
-      else if (type_kpsv_fk == 2) then
-        ! SV-wave
-        ray_p = sin(theta_FK)/beta_FK(nlayer)     ! for vs (i.e., beta)
-      endif
+    ! counts total number of (local) GLL points on absorbing boundary
+    call count_num_boundary_points(num_abs_boundary_faces,abs_boundary_ispec,npt)
 
-      ! note: vertical incident (theta==0 -> p==0) is not handled.
-      !       here, it limits ray parameter p to a very small value to handle the calculations
-      if (abs(ray_p) < TOL_ZERO_TAKEOFF) ray_p = sign(TOL_ZERO_TAKEOFF,ray_p)
+    !! compute the bottom midle point of the domain
 
-      ! maximum period
-      Tg  = 1.d0 / ff0
+    !! VM VM dealocate in case of severals runs occurs in inverse_problem program
+    if (allocated(ipt_table)) deallocate(ipt_table)
+    if (allocated(Veloc_FK))  deallocate(Veloc_FK)
+    if (allocated(Tract_FK))  deallocate(Tract_FK)
 
-      ! counts total number of (local) GLL points on absorbing boundary
-      call count_num_boundary_points(num_abs_boundary_faces,abs_boundary_ispec,npt)
+    !! allocate memory for FK solution
+    if (npt > 0) then
+      allocate(ipt_table(NGLLSQUARE,num_abs_boundary_faces), stat=ier)
+      if (ier /= 0) call exit_MPI_without_rank('error allocating array 2202')
+    else
+      ! dummy
+      allocate(ipt_table(1,1),stat=ier)
+      if (ier /= 0) call exit_MPI_without_rank('error allocating array 2204')
+    endif
+    ipt_table(:,:) = 0
 
-      !! compute the bottom midle point of the domain
+    call find_size_of_working_arrays(deltat, freq_sampling_fk, tmax_fk, NF_FOR_STORING, &
+                                     NF_FOR_FFT, NPOW_FOR_INTERP, NP_RESAMP, DF_FK)
 
-      !! VM VM dealocate in case of severals runs occurs in inverse_problem program
-      if (allocated(ipt_table)) deallocate(ipt_table)
-      if (allocated(Veloc_FK))  deallocate(Veloc_FK)
-      if (allocated(Tract_FK))  deallocate(Tract_FK)
+    ! user output
+    if (myrank == 0) then
+      write(IMAIN,*) '  computed FK parameters:'
+      write(IMAIN,*) '    frequency sampling rate        = ', freq_sampling_fk,"(Hz)"
+      write(IMAIN,*) '    number of frequencies to store = ', NF_FOR_STORING
+      write(IMAIN,*) '    number of frequencies for FFT  = ', NF_FOR_FFT
+      write(IMAIN,*) '    power of 2 for FFT             = ', NPOW_FOR_INTERP
+      write(IMAIN,*)
+      write(IMAIN,*) '    simulation time step           = ', deltat,"(s)"
+      write(IMAIN,*) '    total simulation length        = ', NSTEP*deltat,"(s)"
+      write(IMAIN,*)
+      write(IMAIN,*) '    FK time resampling rate        = ', NP_RESAMP
+      write(IMAIN,*) '    new time step for F-K          = ', NP_RESAMP * deltat,"(s)"
+      write(IMAIN,*) '    new time window length         = ', tmax_fk,"(s)"
+      write(IMAIN,*)
+      write(IMAIN,*) '    frequency step for F-K         = ', DF_FK,"(Hz)"
+      write(IMAIN,*)
+      write(IMAIN,*) '  total number of points on boundary = ',npt
+      call flush_IMAIN()
+    endif
 
-      !! allocate memory for FK solution
-      if (npt > 0) then
-        allocate(ipt_table(NGLLSQUARE,num_abs_boundary_faces), stat=ier)
-        if (ier /= 0) call exit_MPI_without_rank('error allocating array 2202')
-      else
-        ! dummy
-        allocate(ipt_table(1,1),stat=ier)
-        if (ier /= 0) call exit_MPI_without_rank('error allocating array 2204')
-      endif
-      ipt_table(:,:) = 0
-
-      call find_size_of_working_arrays(deltat, freq_sampling_fk, tmax_fk, NF_FOR_STORING, &
-                                       NF_FOR_FFT, NPOW_FOR_INTERP, NP_RESAMP, DF_FK)
-
-      ! user output
+    ! safety check with number of simulation time steps
+    if (NSTEP/NP_RESAMP > NF_FOR_STORING + NP_RESAMP) then
       if (myrank == 0) then
-        write(IMAIN,*) '  computed FK parameters:'
-        write(IMAIN,*) '    frequency sampling rate        = ', freq_sampling_fk,"(Hz)"
-        write(IMAIN,*) '    number of frequencies to store = ', NF_FOR_STORING
-        write(IMAIN,*) '    number of frequencies for FFT  = ', NF_FOR_FFT
-        write(IMAIN,*) '    power of 2 for FFT             = ', NPOW_FOR_INTERP
-        write(IMAIN,*)
-        write(IMAIN,*) '    simulation time step           = ', deltat,"(s)"
-        write(IMAIN,*) '    total simulation length        = ', NSTEP*deltat,"(s)"
-        write(IMAIN,*)
-        write(IMAIN,*) '    FK time resampling rate        = ', NP_RESAMP
-        write(IMAIN,*) '    new time step for F-K          = ', NP_RESAMP * deltat,"(s)"
-        write(IMAIN,*) '    new time window length         = ', tmax_fk,"(s)"
-        write(IMAIN,*)
-        write(IMAIN,*) '    frequency step for F-K         = ', DF_FK,"(Hz)"
-        write(IMAIN,*)
-        write(IMAIN,*) '  total number of points on boundary = ',npt
-        call flush_IMAIN()
+        print *,'Error: FK time window length ',tmax_fk,' and NF_for_storing ',NF_FOR_STORING
+        print *,'       are too small for chosen simulation length with NSTEP = ',NSTEP
+        print *
+        print *,'       you could use a smaller NSTEP <= ',NF_FOR_STORING*NP_RESAMP
+        print *,'       or'
+        print *,'       increase FK window length larger than ',(NSTEP/NP_RESAMP - NP_RESAMP) * NP_RESAMP * deltat
+        print *,'       to have a NF for storing  larger than ',(NSTEP/NP_RESAMP - NP_RESAMP)
       endif
+      stop 'Invalid FK setting'
+    endif
 
-      ! safety check with number of simulation time steps
-      if (NSTEP/NP_RESAMP > NF_FOR_STORING + NP_RESAMP) then
-        if (myrank == 0) then
-          print *,'Error: FK time window length ',tmax_fk,' and NF_for_storing ',NF_FOR_STORING
-          print *,'       are too small for chosen simulation length with NSTEP = ',NSTEP
-          print *
-          print *,'       you could use a smaller NSTEP <= ',NF_FOR_STORING*NP_RESAMP
-          print *,'       or'
-          print *,'       increase FK window length larger than ',(NSTEP/NP_RESAMP - NP_RESAMP) * NP_RESAMP * deltat
-          print *,'       to have a NF for storing  larger than ',(NSTEP/NP_RESAMP - NP_RESAMP)
-        endif
-        stop 'Invalid FK setting'
-      endif
-
-      ! safety check
-      if (NP_RESAMP == 0) then
-        if (myrank == 0) then
-          print *,'Error: FK resampling rate ',NP_RESAMP,' is invalid for frequency sampling rate ',freq_sampling_fk
-          print *,'       and the chosen simulation DT = ',deltat
-          print *
-          print *,'       you could use a higher frequency sampling rate>',1./(deltat)
-          print *,'       (or increase the time stepping size DT if possible)'
-        endif
-        stop 'Invalid FK setting'
-      endif
-
-      ! limits resampling sizes
-      if (NP_RESAMP > 10000) then
-        if (myrank == 0) then
-          print *,'Error: FK resampling rate ',NP_RESAMP,' is too high for frequency sampling rate ',freq_sampling_fk
-          print *,'       and the chosen simulation DT = ',deltat
-          print *
-          print *,'       you could use a higher frequency sampling rate>',1./(10000*deltat)
-          print *,'       (or increase the time stepping size DT if possible)'
-        endif
-        stop 'Invalid FK setting'
-      endif
-
-      if (npt > 0) then
-        !! arrays for storing FK solution --------------------------------------------
-        allocate(Veloc_FK(NDIM, npt, -NP_RESAMP:NF_FOR_STORING+NP_RESAMP),stat=ier)
-        if (ier /= 0) call exit_MPI_without_rank('error allocating array 2210')
-        if (ier /= 0) stop 'error while allocating Veloc_FK'
-        Veloc_FK(:,:,:) = 0._CUSTOM_REAL
-
-        allocate(Tract_FK(NDIM, npt, -NP_RESAMP:NF_FOR_STORING+NP_RESAMP),stat=ier)
-        if (ier /= 0) call exit_MPI_without_rank('error allocating array 2210')
-        if (ier /= 0) stop 'error while allocating Veloc_FK'
-        Tract_FK(:,:,:) = 0._CUSTOM_REAL
-
-        call FK3D(type_kpsv_fk, nlayer, NSTEP, npt, &
-                  ray_p, phi_FK, xx0, yy0, zz0, Tg, &
-                  tt0, alpha_FK, beta_FK, mu_FK, h_FK, &
-                  NF_FOR_STORING, NPOW_FOR_FFT, NP_RESAMP, DF_FK)
-
-      endif
-
-      call synchronize_all()
-
-      ! get MPI ending time for FK
-      tCPU = wtime() - tstart
-
-      ! user output
+    ! safety check
+    if (NP_RESAMP == 0) then
       if (myrank == 0) then
+        print *,'Error: FK resampling rate ',NP_RESAMP,' is invalid for frequency sampling rate ',freq_sampling_fk
+        print *,'       and the chosen simulation DT = ',deltat
+        print *
+        print *,'       you could use a higher frequency sampling rate>',1./(deltat)
+        print *,'       (or increase the time stepping size DT if possible)'
+      endif
+      stop 'Invalid FK setting'
+    endif
+
+    ! limits resampling sizes
+    if (NP_RESAMP > 10000) then
+      if (myrank == 0) then
+        print *,'Error: FK resampling rate ',NP_RESAMP,' is too high for frequency sampling rate ',freq_sampling_fk
+        print *,'       and the chosen simulation DT = ',deltat
+        print *
+        print *,'       you could use a higher frequency sampling rate>',1./(10000*deltat)
+        print *,'       (or increase the time stepping size DT if possible)'
+      endif
+      stop 'Invalid FK setting'
+    endif
+
+    if (npt > 0) then
+      !! arrays for storing FK solution --------------------------------------------
+      allocate(Veloc_FK(NDIM, npt, -NP_RESAMP:NF_FOR_STORING+NP_RESAMP),stat=ier)
+      if (ier /= 0) call exit_MPI_without_rank('error allocating array 2210')
+      if (ier /= 0) stop 'error while allocating Veloc_FK'
+      Veloc_FK(:,:,:) = 0._CUSTOM_REAL
+
+      allocate(Tract_FK(NDIM, npt, -NP_RESAMP:NF_FOR_STORING+NP_RESAMP),stat=ier)
+      if (ier /= 0) call exit_MPI_without_rank('error allocating array 2210')
+      if (ier /= 0) stop 'error while allocating Veloc_FK'
+      Tract_FK(:,:,:) = 0._CUSTOM_REAL
+
+      call FK3D(type_kpsv_fk, nlayer, NSTEP, npt, &
+                ray_p, phi_FK, xx0, yy0, zz0, Tg, &
+                tt0, alpha_FK, beta_FK, mu_FK, h_FK, &
+                NF_FOR_STORING, NPOW_FOR_FFT, NP_RESAMP, DF_FK)
+    endif
+
+    call synchronize_all()
+
+    ! get MPI ending time for FK
+    tCPU = wtime() - tstart
+
+    ! user output
+    if (myrank == 0) then
         write(IMAIN,'(a35,1x, f20.2, a7)')  " Elapsed time for FK computation : ",  tCPU, " sec. "
-        write(IMAIN,*)
-        call flush_IMAIN()
-      endif
+      write(IMAIN,*)
+      call flush_IMAIN()
+    endif
 
-      deallocate(alpha_FK, beta_FK, rho_FK, mu_FK, h_FK)
-   endif
-  endif
+    deallocate(alpha_FK, beta_FK, rho_FK, mu_FK, h_FK)
 
-  ! * end of initial setup for future FK3D calculations *
+    ! * end of initial setup for future FK3D calculations *
+
+    case (INJECTION_TECHNIQUE_IS_SPECFEM)
+      ! SPECFEM coupling
+      call couple_with_injection_prepare_specfem_files()
+
+  end select
 
   end subroutine couple_with_injection_prepare_boundary
 
@@ -2209,3 +2233,2015 @@
   call max_all_all_cr(Zmax_loc, Zmax_box)
 
   end subroutine FindBoundaryBox
+
+
+!-------------------------------------------------------------------------------------------------
+!
+! routines for SPECFEM injection technique
+!
+!-------------------------------------------------------------------------------------------------
+
+! routines for storing wavefield solution on coupling boundary points
+
+  subroutine locate_coupling_points(num_coupling_points_total,coupling_points)
+
+! locates all coupling points (given in specfem_coupling_points.bin file) in current mesh
+!
+! similar as in routine locate_receivers()
+
+  use constants, only: HUGEVAL,CUSTOM_REAL,MAX_STRING_LEN,IMAIN,NDIM,NGLLX,NGLLY,NGLLZ
+
+  use specfem_par, only: ibool,myrank,NSPEC_AB,NGLOB_AB,NPROC, &
+    xstore,ystore,zstore
+
+  use specfem_par_coupling
+
+  implicit none
+
+  integer, intent(in) :: num_coupling_points_total
+  real(kind=CUSTOM_REAL),dimension(7,num_coupling_points_total),intent(in) :: coupling_points
+
+  ! local parameters
+  integer :: ipoin,islice,ispec,ier
+
+  ! temporary arrays
+  double precision, allocatable, dimension(:) :: x_found,y_found,z_found
+  double precision, dimension(:), allocatable :: final_distance
+  double precision :: final_distance_max
+  integer, dimension(:),allocatable :: idomain
+
+  double precision, dimension(:), allocatable :: xi_point,eta_point,gamma_point
+  double precision, dimension(:,:,:), allocatable :: nu_point
+
+  ! location search
+  real(kind=CUSTOM_REAL) :: distance_min_glob,distance_max_glob
+  real(kind=CUSTOM_REAL) :: elemsize_min_glob,elemsize_max_glob
+  real(kind=CUSTOM_REAL) :: x_min_glob,x_max_glob
+  real(kind=CUSTOM_REAL) :: y_min_glob,y_max_glob
+  real(kind=CUSTOM_REAL) :: z_min_glob,z_max_glob
+
+  double precision :: x,y,z,x_new,y_new,z_new
+  double precision :: xi,eta,gamma,final_distance_squared
+  double precision, dimension(NDIM,NDIM) :: nu_found
+
+  integer :: ispec_found,idomain_found
+
+  ! subset size
+  integer, parameter :: NPOIN_SUBSET_MAX = 500
+
+  ! subset arrays
+  double precision, dimension(NPOIN_SUBSET_MAX) :: xi_poin_subset,eta_poin_subset,gamma_poin_subset
+  double precision, dimension(NPOIN_SUBSET_MAX) :: x_found_subset,y_found_subset,z_found_subset
+  double precision, dimension(NPOIN_SUBSET_MAX) :: final_distance_subset
+  double precision, dimension(NDIM,NDIM,NPOIN_SUBSET_MAX) :: nu_subset
+  integer, dimension(NPOIN_SUBSET_MAX) :: ispec_selected_poin_subset,idomain_subset
+  integer :: npoin_subset_current_size,ipoin_in_this_subset,ipoin_already_done
+  integer :: num_output_info
+
+  ! timer MPI
+  double precision, external :: wtime
+  double precision :: tstart,tCPU
+
+  ! get MPI starting time
+  tstart = wtime()
+
+  ! initializes
+  npoints_total = num_coupling_points_total
+
+  ! user output
+  if (myrank == 0) then
+    write(IMAIN,*) '  locating coupling points:'
+    call flush_IMAIN()
+
+    ! output frequency for large number of points
+    ! number to output in steps of 1000/10000/.. depending on how large the number of entries is
+    if (npoints_total > 500000) then
+        num_output_info = min(100000,int(10**floor(log10(dble(npoints_total)))))
+    else if (npoints_total > 50000) then
+        num_output_info = min(10000,int(10**floor(log10(dble(npoints_total)))))
+    else
+        num_output_info = min(1000,int(10**floor(log10(dble(npoints_total)))))
+    endif
+    ! number to output about ~50 steps, rounds to the next multiple of 1000
+    !num_output_info = max(1000,int(ceiling(ceiling(npoints_total/50.0)/1000.0)*1000))
+  endif
+
+  ! compute typical size of elements
+  ! gets mesh dimensions
+  call check_mesh_distances(myrank,NSPEC_AB,NGLOB_AB,ibool,xstore,ystore,zstore, &
+                            x_min_glob,x_max_glob,y_min_glob,y_max_glob,z_min_glob,z_max_glob, &
+                            elemsize_min_glob,elemsize_max_glob, &
+                            distance_min_glob,distance_max_glob)
+
+  ! allocate memory for point arrays, i.e. points given in specfem_coupling_points.bin file
+  allocate(islice_selected_point(npoints_total), &
+           ispec_selected_point(npoints_total),stat=ier)
+  if (ier /= 0) stop 'Error allocating arrays for coupling points'
+  ! initializes arrays
+  islice_selected_point(:) = -1
+  ispec_selected_point(:) = 0
+
+  ! allocate memory for additional arrays using number of stations
+  allocate(x_found(npoints_total), &
+           y_found(npoints_total), &
+           z_found(npoints_total), &
+           xi_point(npoints_total), &
+           eta_point(npoints_total), &
+           gamma_point(npoints_total), &
+           nu_point(NDIM,NDIM,npoints_total), &
+           final_distance(npoints_total), &
+           idomain(npoints_total),stat=ier)
+  if (ier /= 0) stop 'Error allocating arrays for coupling points x_found,..'
+  x_found(:) = 0.d0; y_found(:) = 0.d0; z_found(:) = 0.d0
+  xi_point(:) = 0.d0; eta_point(:) = 0.d0; gamma_point(:) = 0.d0; nu_point(:,:,:) = 0.0d0
+  final_distance(:) = HUGEVAL
+  idomain(:) = 0
+
+  ! note: we loop over subsets of points to reduce the MPI communication for each point
+  !
+  ! loop on all the stations to locate the stations
+  do ipoin_already_done = 0, npoints_total, NPOIN_SUBSET_MAX
+
+    ! the size of the subset can be the maximum size, or less (if we are in the last subset,
+    ! or if there are fewer sources than the maximum size of a subset)
+    npoin_subset_current_size = min(NPOIN_SUBSET_MAX, npoints_total - ipoin_already_done)
+
+    ! initializes search results
+    final_distance_subset(:) = HUGEVAL
+
+    ! loop over the stations within this subset
+    do ipoin_in_this_subset = 1,npoin_subset_current_size
+
+      ! mapping from station number in current subset to real station number in all the subsets
+      ipoin = ipoin_in_this_subset + ipoin_already_done
+
+      x = coupling_points(1,ipoin)
+      y = coupling_points(2,ipoin)
+      z = coupling_points(3,ipoin)
+
+      ! locates point in mesh
+      call locate_point_in_mesh(x, y, z, &
+                                .true., elemsize_max_glob, &
+                                ispec_found, xi, eta, gamma, &
+                                x_new, y_new, z_new, &
+                                idomain_found, nu_found, final_distance_squared)
+
+      ispec_selected_poin_subset(ipoin_in_this_subset) = ispec_found
+
+      x_found_subset(ipoin_in_this_subset) = x_new
+      y_found_subset(ipoin_in_this_subset) = y_new
+      z_found_subset(ipoin_in_this_subset) = z_new
+
+      xi_poin_subset(ipoin_in_this_subset) = xi
+      eta_poin_subset(ipoin_in_this_subset) = eta
+      gamma_poin_subset(ipoin_in_this_subset) = gamma
+
+      idomain_subset(ipoin_in_this_subset) = idomain_found
+      nu_subset(:,:,ipoin_in_this_subset) = nu_found(:,:)
+      final_distance_subset(ipoin_in_this_subset) = sqrt(final_distance_squared)
+
+      ! user output progress
+      if (myrank == 0) then
+        if (mod(ipoin,num_output_info) == 0) then
+          tCPU = wtime() - tstart
+          write(IMAIN,*) '    located point ',ipoin,'out of',npoints_total,' - elapsed time: ',sngl(tCPU),'s'
+          call flush_IMAIN()
+        endif
+      endif
+    enddo ! loop over subset
+
+    ! main process locates best location in all slices
+    call locate_MPI_slice(npoin_subset_current_size,ipoin_already_done, &
+                          ispec_selected_poin_subset, &
+                          x_found_subset, y_found_subset, z_found_subset, &
+                          xi_poin_subset,eta_poin_subset,gamma_poin_subset, &
+                          idomain_subset,nu_subset,final_distance_subset, &
+                          npoints_total,ispec_selected_point, islice_selected_point, &
+                          x_found,y_found,z_found, &
+                          xi_point, eta_point, gamma_point, &
+                          idomain,nu_point,final_distance)
+
+  enddo ! loop over stations
+
+  ! bcast from main process
+  call bcast_all_i(islice_selected_point,npoints_total)
+
+  ! note: in principle, only islice must be updated on all secondary processes, the ones containing the best location
+  !       could have valid entries in all other arrays set before already.
+  !       nevertheless, for convenience we broadcast all needed arrays back to the secondarys
+  call bcast_all_i(idomain,npoints_total)
+  call bcast_all_i(ispec_selected_point,npoints_total)
+
+  call bcast_all_dp(xi_point,npoints_total)
+  call bcast_all_dp(eta_point,npoints_total)
+  call bcast_all_dp(gamma_point,npoints_total)
+
+  call bcast_all_dp(x_found,npoints_total)
+  call bcast_all_dp(y_found,npoints_total)
+  call bcast_all_dp(z_found,npoints_total)
+
+  call bcast_all_dp(nu_point,NDIM*NDIM*npoints_total)
+  call bcast_all_dp(final_distance,npoints_total)
+
+  ! checks if we got valid elements
+  ! locate point might return a zero ispec if point outside/above mesh
+  do ipoin = 1,npoints_total
+    ! slice the point is in
+    islice = islice_selected_point(ipoin)
+
+    ! checks slice
+    if (islice < 0 .or. islice > NPROC-1) then
+      print *,'Error locating point # ',ipoin
+      print *,'  found in an invalid slice: ',islice
+      call exit_MPI(myrank,'Error something is wrong with the slice number of coupling point')
+    endif
+
+    ! checks found element
+    if (myrank == islice_selected_point(ipoin)) then
+      ! element index
+      ispec = ispec_selected_point(ipoin)
+      ! checks if valid
+      if (ispec < 1 .or. ispec > NSPEC_AB) then
+        ! invalid element
+        print *,'Error locating coupling point # ',ipoin
+        print *,'  original x: ',coupling_points(1,ipoin)
+        print *,'  original y: ',coupling_points(2,ipoin)
+        print *,'  original z: ',coupling_points(3,ipoin)
+        print *,'  found in an invalid element: slice         :',islice_selected_point(ipoin)
+        print *,'                               ispec         :',ispec_selected_point(ipoin),'out of ',NSPEC_AB
+        print *,'                               domain        :',idomain(ipoin)
+        print *,'                               xi/eta/gamma  :',xi_point(ipoin),eta_point(ipoin),gamma_point(ipoin)
+        print *,'                               final_distance:',final_distance(ipoin)
+        print *
+        print *,'Please check your coupling point positions, and move them inside the (coarse) mesh geometry - exiting...'
+        print *
+        call exit_MPI(myrank,'Error locating coupling points')
+      endif
+    endif
+  enddo
+  call synchronize_all()
+
+  ! this is executed by main process only
+  if (myrank == 0) then
+    ! compute maximal distance for all the receivers
+    final_distance_max = maxval(final_distance(:))
+
+    ! checks stations location
+    do ipoin = 1,npoints_total
+      if (final_distance(ipoin) == HUGEVAL) then
+        write(IMAIN,*) 'Error locating coupling point # ',ipoin,' has huge distance'
+        call exit_MPI(myrank,'Error locating receiver')
+      endif
+    enddo
+
+    ! output info for larger distances
+    if (final_distance_max > 0.1 * elemsize_min_glob) then
+      do ipoin = 1,npoints_total
+        if (final_distance(ipoin) > 0.99 * final_distance_max) then
+          write(IMAIN,*)
+          write(IMAIN,*) '  poor location for coupling point # ',ipoin,' with final_distance: ',final_distance(ipoin)
+          write(IMAIN,*) '    original x/y/z = ',coupling_points(1:3,ipoin)
+          write(IMAIN,*) '    found at x/y/z = ',sngl(x_found(ipoin)),sngl(y_found(ipoin)),sngl(z_found(ipoin))
+          write(IMAIN,*) '    in slice :',islice_selected_point(ipoin),' ispec :',ispec_selected_point(ipoin)
+          write(IMAIN,*) '       xi/eta/gamma :',sngl(xi_point(ipoin)),sngl(eta_point(ipoin)),sngl(gamma_point(ipoin))
+          call flush_IMAIN()
+        endif
+      enddo
+    endif
+
+    ! display maximum error for all the receivers
+    write(IMAIN,*)
+    write(IMAIN,*) '  maximum error in location of all the coupling points: ',sngl(final_distance_max),' m'
+    write(IMAIN,*)
+
+    ! add warning if estimate is poor
+    ! (usually means receiver outside the mesh given by the user)
+    if (final_distance_max > elemsize_max_glob) then
+      write(IMAIN,*) '  ************************************************************'
+      write(IMAIN,*) '  ************************************************************'
+      write(IMAIN,*) '  ***** WARNING: at least one point is very poorly located ***'
+      write(IMAIN,*) '  ************************************************************'
+      write(IMAIN,*) '  ************************************************************'
+      write(IMAIN,*)
+    endif
+  endif    ! end of section executed by main process only
+
+  ! sets up point arrays for storing wavefield solution
+  call determine_local_coupling_points(num_coupling_points_total,coupling_points, &
+                                       xi_point,eta_point,gamma_point, &
+                                       x_found,y_found,z_found)
+
+  ! deallocate temporary arrays
+  deallocate(x_found)
+  deallocate(y_found)
+  deallocate(z_found)
+  deallocate(final_distance)
+  deallocate(idomain)
+  deallocate(xi_point,eta_point,gamma_point,nu_point)
+
+  ! synchronize all the processes to make sure everybody has finished
+  call synchronize_all()
+
+  ! user output
+  if (myrank == 0) then
+    ! elapsed time since beginning of mesh generation
+    tCPU = wtime() - tstart
+    write(IMAIN,*) '  Elapsed time for coupling points detection in seconds = ',sngl(tCPU)
+    write(IMAIN,*)
+    call flush_IMAIN()
+  endif
+
+  end subroutine locate_coupling_points
+
+!
+!-------------------------------------------------------------------------------------------------
+
+  subroutine determine_local_coupling_points(num_coupling_points_total,coupling_points, &
+                                             xi_point,eta_point,gamma_point, &
+                                             x_found,y_found,z_found)
+
+! pre-computes arrays for coupling points in this slice
+
+  use constants, only: myrank,CUSTOM_REAL,MAX_STRING_LEN,IMAIN,NDIM,NGLLX,NGLLY,NGLLZ
+
+  use specfem_par, only: xigll,yigll,zigll
+
+  use shared_parameters, only: TRACTION_PATH,NPROC,SAVE_MESH_FILES
+
+  use specfem_par_coupling
+
+  implicit none
+
+  integer, intent(in) :: num_coupling_points_total
+  real(kind=CUSTOM_REAL),dimension(7,num_coupling_points_total),intent(in) :: coupling_points
+
+  double precision, dimension(num_coupling_points_total), intent(in) :: xi_point,eta_point,gamma_point
+  double precision, dimension(num_coupling_points_total), intent(in) :: x_found,y_found,z_found
+
+  ! local parameters
+  integer :: ipoin,ipoin_local,ier
+
+  ! Lagrange interpolators
+  real(kind=CUSTOM_REAL) :: hxi(NGLLX),heta(NGLLY),hgamma(NGLLZ)
+
+  ! vtk output
+  character(len=MAX_STRING_LEN) :: prname_trac,filename
+  integer, dimension(:), allocatable :: iglob_tmp
+  real(kind=CUSTOM_REAL), dimension(:), allocatable :: xstore_tmp,ystore_tmp,zstore_tmp
+
+  ! initializes
+  npoints_local = 0
+
+  ! count local coupling points in this slice
+  ipoin_local = 0
+  do ipoin = 1,npoints_total
+    if (islice_selected_point(ipoin) == myrank) then
+      ! counter
+      ipoin_local = ipoin_local + 1
+    endif
+  enddo
+
+  ! sets number of local points
+  npoints_local = ipoin_local
+
+  ! for collecting wavefields on main process from each process
+  allocate(nb_points_local_per_proc(0:NPROC-1),stat=ier)
+  if (ier /= 0) stop 'Error allocating nb_points_local_per_proc array'
+  nb_points_local_per_proc(:) = 0
+
+  call gather_all_singlei(npoints_local,nb_points_local_per_proc,NPROC)
+
+  ! for main process only to collect all point wavefield
+  if (myrank == 0) then
+    ! array for all points
+    allocate(veloc_total(NDIM,npoints_total), &
+             traction_total(NDIM,npoints_total),stat=ier)
+    if (ier /= 0) stop 'Error allocating veloc_total & traction_total array'
+    veloc_total(:,:) = 0.0_CUSTOM_REAL
+    traction_total(:,:) = 0.0_CUSTOM_REAL
+
+    ! buffer array to collect local wavefields
+    allocate(buffer_points_recv(NDIM,maxval(nb_points_local_per_proc(:))),stat=ier)
+    if (ier /= 0) stop 'Error allocating buffer_points_recv array'
+    buffer_points_recv(:,:) = 0.0_CUSTOM_REAL
+  endif
+
+  ! setup local points arrays
+  if (npoints_local > 0) then
+    ! velocity & traction
+    allocate(veloc_points(NDIM,npoints_local), &
+             traction_points(NDIM,npoints_local), &
+             normal_points(NDIM,npoints_local),stat=ier)
+    if (ier /= 0) stop 'Error allocating local veloc & traction array'
+    veloc_points(:,:) = 0.0_CUSTOM_REAL
+    traction_points(:,:) = 0.0_CUSTOM_REAL
+    normal_points(:,:) = 0.0_CUSTOM_REAL
+
+    ! allocate interpolator arrays
+    allocate(hxi_point_store(NGLLX,npoints_local), &
+             heta_point_store(NGLLY,npoints_local), &
+             hgamma_point_store(NGLLZ,npoints_local),stat=ier)
+    if (ier /= 0) stop 'Error allocating local interpolator arrays'
+    hxi_point_store(:,:) = 0.0_CUSTOM_REAL
+    heta_point_store(:,:) = 0.0_CUSTOM_REAL
+    hgamma_point_store(:,:) = 0.0_CUSTOM_REAL
+
+    ! get interpolators
+    ipoin_local = 0
+    do ipoin = 1,npoints_total
+      ! pre-computes values for local points
+      if (islice_selected_point(ipoin) == myrank) then
+        ! calculates interpolators
+        ! (1-D Lagrange interpolators)
+        call lagrange_only_interpol(NGLLX,xi_point(ipoin),xigll,hxi)
+        call lagrange_only_interpol(NGLLY,eta_point(ipoin),yigll,heta)
+        call lagrange_only_interpol(NGLLZ,gamma_point(ipoin),zigll,hgamma)
+
+        ! local point counter
+        ipoin_local = ipoin_local + 1
+
+        ! stores local interpolators
+        hxi_point_store(:,ipoin_local) = hxi(:)
+        heta_point_store(:,ipoin_local) = heta(:)
+        hgamma_point_store(:,ipoin_local) = hgamma(:)
+
+        ! stores normal
+        normal_points(1,ipoin_local) = coupling_points(4,ipoin)  ! nx
+        normal_points(2,ipoin_local) = coupling_points(5,ipoin)  ! ny
+        normal_points(3,ipoin_local) = coupling_points(6,ipoin)  ! nz
+      endif
+    enddo
+
+    ! vtk output of points found
+    if (SAVE_MESH_FILES) then
+      ! saves points coupling points
+      allocate(iglob_tmp(npoints_local), &
+               xstore_tmp(npoints_local), &
+               ystore_tmp(npoints_local), &
+               zstore_tmp(npoints_local),stat=ier)
+      if (ier /= 0) stop 'error allocating array iglob_tmp arrays'
+      iglob_tmp(:) = 0
+      xstore_tmp(:) = 0.0_CUSTOM_REAL; ystore_tmp(:) = 0.0_CUSTOM_REAL; zstore_tmp(:) = 0.0_CUSTOM_REAL
+
+      ipoin_local = 0
+      do ipoin = 1,npoints_total
+        if (islice_selected_point(ipoin) == myrank) then
+          ! local point counter
+          ipoin_local = ipoin_local + 1
+
+          iglob_tmp(ipoin_local) = ipoin_local
+          xstore_tmp(ipoin_local) = x_found(ipoin)
+          ystore_tmp(ipoin_local) = y_found(ipoin)
+          zstore_tmp(ipoin_local) = z_found(ipoin)
+        endif
+      enddo
+
+      ! creates name for each rank process
+      ! format: {TRACTION_PATH} / proc***_
+      call create_name_database(prname_trac,myrank,TRACTION_PATH)
+
+      filename = trim(prname_trac) // 'specfem_coupling_points_found'
+      call write_VTK_data_points(npoints_local,xstore_tmp,ystore_tmp,zstore_tmp, &
+                                 iglob_tmp,npoints_local,filename)
+      deallocate(iglob_tmp,xstore_tmp,ystore_tmp,zstore_tmp)
+    endif
+  endif
+
+contains
+
+    subroutine lagrange_only_interpol(NGLL,xi,xigll,h)
+
+    ! subroutine to compute only the Lagrange interpolants (h) at any point xi in [-1,1]
+    ! (mixed CUSTOM_REAL and dp inputs)
+
+    use constants, only: CUSTOM_REAL
+
+    implicit none
+
+    integer,intent(in) :: NGLL
+    double precision,intent(in) :: xi
+    double precision,dimension(NGLL),intent(in) :: xigll
+
+    real(kind=CUSTOM_REAL),dimension(NGLL),intent(out) :: h
+
+    ! local parameters
+    integer :: dgr,i
+    double precision :: prod1,prod2
+    double precision :: x0,x
+
+    do dgr = 1,NGLL
+
+      prod1 = 1.d0
+      prod2 = 1.d0
+
+      ! lagrangian interpolants
+      x0 = xigll(dgr)
+
+      do i = 1,NGLL
+        if (i /= dgr) then
+          x = xigll(i)
+          prod1 = prod1 * (xi - x)
+          prod2 = prod2 * (x0 - x)
+        endif
+      enddo
+
+      ! convert to custom real
+      h(dgr) = real(prod1 / prod2,kind=CUSTOM_REAL)
+    enddo
+
+    end subroutine lagrange_only_interpol
+
+  end subroutine determine_local_coupling_points
+
+!
+!-------------------------------------------------------------------------------------------------
+!
+
+  subroutine store_coupling_points_wavefield()
+
+! stores velocity and traction on coupling points
+
+  use specfem_par
+  use specfem_par_coupling
+
+  use specfem_par_acoustic, only: ispec_is_acoustic,potential_acoustic,potential_dot_acoustic,potential_dot_dot_acoustic
+  use specfem_par_elastic, only: ispec_is_elastic,veloc
+  use specfem_par_poroelastic, only: ispec_is_poroelastic,velocs_poroelastic
+
+  implicit none
+
+  ! local parameters
+  integer :: ipoin,ipoin_local
+  integer :: ispec
+
+  real(kind=CUSTOM_REAL) :: vxd,vyd,vzd
+  real(kind=CUSTOM_REAL) :: txd,tyd,tzd
+  real(kind=CUSTOM_REAL) :: nx,ny,nz
+
+  ! Lagrange interpolators
+  real(kind=CUSTOM_REAL) :: hxi(NGLLX),heta(NGLLY),hgamma(NGLLZ)
+
+  ! for collecting local wavefields on main
+  integer :: npoints_local_proc,iproc
+
+  ! checks subsampling recurrence
+  if (mod(it-1,NTSTEP_BETWEEN_OUTPUT_SAMPLE) /= 0) return
+
+  ! gets wavefield
+  if (npoints_local > 0) then
+    ! GPU simulations
+    if (GPU_MODE) then
+      ! not implemented yet
+      call exit_MPI(myrank,'computing tractions is not supported yet for GPU simulations')
+
+      !TODO: need to transfer velocity & stresses
+      ! we need to transfer fields for computing velocity & traction in this routine
+      ! poroelastic not supported yet on GPU
+      if (ELASTIC_SIMULATION) then
+        call transfer_veloc_from_device(NDIM*NGLOB_AB,veloc,Mesh_pointer)
+      endif
+      if (ACOUSTIC_SIMULATION) then
+        call transfer_fields_ac_from_device(NGLOB_AB,potential_acoustic, &
+                                            potential_dot_acoustic, potential_dot_dot_acoustic, &
+                                            Mesh_pointer)
+      endif
+    endif
+
+    ! computes wavefield at point locations
+    ipoin_local = 0
+
+    do ipoin = 1,npoints_total
+      ! slice with point stores current velocity and traction
+      if (islice_selected_point(ipoin) == myrank) then
+        ! local point counter
+        ipoin_local = ipoin_local + 1
+
+        ! gets local interpolators
+        ! (1-D Lagrange interpolators)
+        hxi(:) = hxi_point_store(:,ipoin_local)
+        heta(:) = heta_point_store(:,ipoin_local)
+        hgamma(:) = hgamma_point_store(:,ipoin_local)
+
+        ! element
+        ispec = ispec_selected_point(ipoin)
+
+        ! velocity
+        call compute_point_velocity(ispec,hxi,heta,hgamma,vxd,vyd,vzd)
+
+        ! store velocity for local points
+        veloc_points(1,ipoin_local) = vxd
+        veloc_points(2,ipoin_local) = vyd
+        veloc_points(3,ipoin_local) = vzd
+
+        ! get normal for point
+        nx = normal_points(1,ipoin_local)
+        ny = normal_points(2,ipoin_local)
+        nz = normal_points(3,ipoin_local)
+
+        ! traction
+        call compute_point_traction(ispec,nx,ny,nz,hxi,heta,hgamma,txd,tyd,tzd)
+
+        ! store traction for local points
+        traction_points(1,ipoin_local) = txd
+        traction_points(2,ipoin_local) = tyd
+        traction_points(3,ipoin_local) = tzd
+      endif  ! islice
+    enddo
+  endif   ! npoints_local
+
+  ! main process collect all points
+  if (myrank == 0) then
+    ! fill local point wavefield into total array for main process
+    if (npoints_local > 0) then
+      ipoin_local = 0
+      do ipoin = 1,npoints_total
+        if (islice_selected_point(ipoin) == 0) then
+          ipoin_local = ipoin_local + 1
+          ! store in full arrays
+          veloc_total(:,ipoin) = veloc_points(:,ipoin_local)
+          traction_total(:,ipoin) = traction_points(:,ipoin_local)
+        endif
+      enddo
+    endif
+
+    ! collect wavefield from all other processes
+    do iproc = 1,NPROC-1
+      ! receive local wavefield
+      npoints_local_proc = nb_points_local_per_proc(iproc)
+      if (npoints_local_proc > 0) then
+        ! velocity
+        ! receive array
+        call recvv_cr(buffer_points_recv,NDIM*npoints_local_proc,iproc,itag)
+        ! fill into total array
+        ipoin_local = 0
+        do ipoin = 1,npoints_total
+          if (islice_selected_point(ipoin) == iproc) then
+            ipoin_local = ipoin_local + 1
+            ! store in full array
+            veloc_total(:,ipoin) = buffer_points_recv(:,ipoin_local)
+          endif
+        enddo
+
+        ! traction
+        ! receive array
+        call recvv_cr(buffer_points_recv,NDIM*npoints_local_proc,iproc,itag)
+        ! fill into total array
+        ipoin_local = 0
+        do ipoin = 1,npoints_total
+          if (islice_selected_point(ipoin) == iproc) then
+            ipoin_local = ipoin_local + 1
+            ! store in full array
+            traction_total(:,ipoin) = buffer_points_recv(:,ipoin_local)
+          endif
+        enddo
+      endif
+    enddo
+  else
+    ! secondary processes send arrays
+    if (npoints_local > 0) then
+      call sendv_cr(veloc_points,NDIM*npoints_local,0,itag)
+      call sendv_cr(traction_points,NDIM*npoints_local,0,itag)
+    endif
+  endif
+
+  ! main process writes out velocity and traction
+  if (myrank == 0) then
+    write(IOUT_COUP) veloc_total,traction_total
+  endif
+
+contains
+
+    subroutine compute_point_velocity(ispec,hxi,heta,hgamma,vxd,vyd,vzd)
+
+    implicit none
+    integer, intent(in) :: ispec
+    real(kind=CUSTOM_REAL), intent(in) :: hxi(NGLLX),heta(NGLLY),hgamma(NGLLZ)
+    real(kind=CUSTOM_REAL), intent(out) :: vxd,vyd,vzd
+
+    ! local parameters
+    real(kind=CUSTOM_REAL) :: hlagrange
+    real(kind=CUSTOM_REAL),dimension(NDIM,NGLLX,NGLLY,NGLLZ):: veloc_element
+
+    ! local parameters
+    integer :: i,j,k,iglob
+
+    ! initializes
+    vxd = 0.0_CUSTOM_REAL
+    vyd = 0.0_CUSTOM_REAL
+    vzd = 0.0_CUSTOM_REAL
+
+    ! elastic domain
+    if (ispec_is_elastic(ispec)) then
+      ! interpolates wavefield at exact location
+      do k = 1,NGLLZ
+        do j = 1,NGLLY
+          do i = 1,NGLLX
+            iglob = ibool(i,j,k,ispec)
+            hlagrange = hxi(i) * heta(j) * hgamma(k)
+            ! velocity
+            vxd = vxd + veloc(1,iglob) * hlagrange
+            vyd = vyd + veloc(2,iglob) * hlagrange
+            vzd = vzd + veloc(3,iglob) * hlagrange
+          enddo
+        enddo
+      enddo
+    endif
+
+    ! acoustic domain
+    if (ispec_is_acoustic(ispec)) then
+      ! velocity vector
+      call compute_gradient_in_acoustic(ispec,potential_dot_acoustic,veloc_element)
+      ! interpolates seismograms at exact receiver locations
+      do k = 1,NGLLZ
+        do j = 1,NGLLY
+          do i = 1,NGLLX
+            hlagrange = hxi(i) * heta(j) * hgamma(k)
+            ! velocity
+            vxd = vxd + hlagrange * veloc_element(1,i,j,k)
+            vyd = vyd + hlagrange * veloc_element(2,i,j,k)
+            vzd = vzd + hlagrange * veloc_element(3,i,j,k)
+          enddo
+        enddo
+      enddo
+    endif
+
+    ! poroelastic domain
+    if (ispec_is_poroelastic(ispec)) then
+      ! interpolates wavefield at exact location
+      do k = 1,NGLLZ
+        do j = 1,NGLLY
+          do i = 1,NGLLX
+            iglob = ibool(i,j,k,ispec)
+            hlagrange = hxi(i) * heta(j) * hgamma(k)
+            ! velocity
+            vxd = vxd + velocs_poroelastic(1,iglob) * hlagrange
+            vyd = vyd + velocs_poroelastic(2,iglob) * hlagrange
+            vzd = vzd + velocs_poroelastic(3,iglob) * hlagrange
+          enddo
+        enddo
+      enddo
+    endif
+
+    end subroutine compute_point_velocity
+
+    !-----------------------------------------------------------------------------------------------------
+
+    subroutine compute_point_traction(ispec,nx,ny,nz,hxi,heta,hgamma,txd,tyd,tzd)
+
+    use specfem_par_movie, only: stress_xx,stress_yy,stress_zz,stress_xy,stress_xz,stress_yz
+
+    implicit none
+    integer, intent(in) :: ispec
+    real(kind=CUSTOM_REAL), intent(in) :: nx,ny,nz
+    real(kind=CUSTOM_REAL), intent(in) :: hxi(NGLLX),heta(NGLLY),hgamma(NGLLZ)
+    real(kind=CUSTOM_REAL), intent(out) :: txd,tyd,tzd
+
+    ! local parameters
+    real(kind=CUSTOM_REAL) :: hlagrange
+    !real(kind=CUSTOM_REAL),dimension(NDIM,NGLLX,NGLLY,NGLLZ):: stress_element
+    real(kind=CUSTOM_REAL) :: sigma_xx,sigma_yy,sigma_zz,sigma_xy,sigma_xz,sigma_yz,sigma_yx,sigma_zx,sigma_zy
+
+    ! local parameters
+    integer :: i,j,k
+
+    ! initializes
+    txd = 0.0_CUSTOM_REAL
+    tyd = 0.0_CUSTOM_REAL
+    tzd = 0.0_CUSTOM_REAL
+
+    ! elastic domain
+    if (ispec_is_elastic(ispec)) then
+      ! interpolates wavefield at exact location
+      do k = 1,NGLLZ
+        do j = 1,NGLLY
+          do i = 1,NGLLX
+            hlagrange = hxi(i) * heta(j) * hgamma(k)
+
+            ! stress
+            sigma_xx = stress_xx(i,j,k,ispec)
+            sigma_yy = stress_yy(i,j,k,ispec)
+            sigma_zz = stress_zz(i,j,k,ispec)
+            sigma_xy = stress_xy(i,j,k,ispec)
+            sigma_xz = stress_xz(i,j,k,ispec)
+            sigma_yz = stress_yz(i,j,k,ispec)
+
+            ! assumes symmetric stress tensor
+            sigma_yx = sigma_xy
+            sigma_zx = sigma_xz
+            sigma_zy = sigma_yz
+
+            ! traction
+            txd = txd + (sigma_xx * nx + sigma_xy * ny + sigma_xz * nz) * hlagrange
+            tyd = tyd + (sigma_yx * nx + sigma_yy * ny + sigma_yz * nz) * hlagrange
+            tzd = tzd + (sigma_zx * nx + sigma_zy * ny + sigma_zz * nz) * hlagrange
+          enddo
+        enddo
+      enddo
+    endif
+
+    ! acoustic domain
+    if (ispec_is_acoustic(ispec)) then
+      ! not implemented yet
+      call exit_MPI(myrank,'computing traction is not supported yet for acoustic elements')
+    endif
+
+    ! poroelastic domain
+    if (ispec_is_poroelastic(ispec)) then
+      ! not implemented yet
+      call exit_MPI(myrank,'computing traction is not supported yet for poroelastic elements')
+    endif
+
+    end subroutine compute_point_traction
+
+  end subroutine store_coupling_points_wavefield
+
+!
+!-------------------------------------------------------------------------------------------------
+!
+
+! routines for running solver simulation with wavefield injection
+
+  subroutine couple_with_injection_prepare_specfem_files()
+
+  use constants, only: myrank,NDIM,MAX_STRING_LEN,NGLLSQUARE,IMAIN,IOUT,IIN,IIN_veloc_dsm
+
+  use shared_parameters, only: DT,NSTEP,NPROC,TRACTION_PATH
+
+  use specfem_par, only: t0,num_abs_boundary_faces
+
+  use specfem_par_coupling
+
+  implicit none
+
+  ! local parameters
+  integer :: ipoin,ipoin_local,i,ier
+  character(len=MAX_STRING_LEN) :: prname_trac,filename
+
+  ! file reading
+  double precision :: start_time,dt_incr
+  integer :: num_coupling_points_total,ntimesteps
+  real(kind=CUSTOM_REAL), dimension(:,:), allocatable :: tmp_veloc,tmp_traction
+  real(kind=CUSTOM_REAL), dimension(:,:,:), allocatable :: tmp_veloc_points_timeseries,tmp_traction_points_timeseries
+  integer :: offset_proc
+
+  double precision :: tmin_file,tmax_file,tmin_curr,tmax_curr
+  double precision :: sizeval
+
+  ! timing
+  double precision :: tstart,tCPU
+  double precision, external :: wtime
+
+  ! synchronize first
+  call synchronize_all()
+
+  ! get MPI starting time
+  tstart = wtime()
+
+  ! user output
+  if (myrank == 0) then
+    write(IMAIN,*) '  using SPECFEM coupling'
+    call flush_IMAIN()
+  endif
+
+  ! SPECFEM coupling
+  !
+  ! note: this setup routine will be called for the small-scale "local" simulation in the solver.
+  !       at this point, we should have the wavefield solution from the coarse simulation saved in TRACTION_PATH folder,
+  !       as a single file `specfem_coupling_solution.bin`.
+  !
+  !       the solution must still be interpolated for the time step size and duration of this small-scale simulation,
+  !       similar as it is done for AxiSEM coupling with using the external tool `xreformat` in the modified AxiSEM folder.
+  !
+  !       for this coupling with injection implementation, the coupling boundary points are defined by the Stacey absorbing
+  !       boundary faces, i.e., by num_abs_boundary_faces and corresponding surface arrays.
+  !       we will assume that these boundary points are the ones used as coupling boundary points for which the solution
+  !       was computed. That is, we won't re-locate the points in this solver simulation in case the small-scale simulation
+  !       setup would have changed.
+  !
+  !       to inject the wavefield, we first need to interpolate in time the wavefield solution and store them
+  !       for each process as local arrays into new files. this needs only to be done for slices that have boundary points.
+
+  ! assumed number of local boundary points
+  npoints_local = num_abs_boundary_faces * NGLLSQUARE
+
+  ! get coupling points from each process
+  allocate(nb_points_local_per_proc(0:NPROC-1),stat=ier)
+  if (ier /= 0) stop 'Error allocating nb_points_local_per_proc array'
+  nb_points_local_per_proc(:) = 0
+
+  call gather_all_all_singlei(npoints_local,nb_points_local_per_proc,NPROC)
+
+  ! assumed total number of boundary points
+  npoints_total = sum(nb_points_local_per_proc(:))
+
+  ! offset in total points array for this slice
+  if (myrank == 0) then
+    offset_proc = 0
+  else
+    offset_proc = sum(nb_points_local_per_proc(0:myrank-1))
+  endif
+
+  ! read full wavefield solution
+  filename = trim(TRACTION_PATH) // '/' // 'specfem_coupling_solution.bin'
+
+  ! user output
+  if (myrank == 0) then
+    write(IMAIN,*) '  reading solution file : ',trim(filename)
+    call flush_IMAIN()
+  endif
+
+  open(unit=IIN,file=trim(filename),status='old',action='read',form='unformatted',iostat=ier)
+  if (ier /= 0) then
+    print *,'Error: could not open file ',trim(filename)
+    print *,'       Please check if file exists and was computed with a previous (coarse) forward simulation...'
+    stop 'Error opening specfem_coupling_solution.bin'
+  endif
+
+  ! first line: #num_points #step_size #start_time #ntimesteps
+  read(IIN) num_coupling_points_total, dt_incr, start_time, ntimesteps
+
+  ! solution file time range
+  tmin_file = start_time  ! start_time is negative
+  tmax_file = dble(ntimesteps-1) * dt_incr + start_time
+
+  ! user output
+  if (myrank == 0) then
+    write(IMAIN,*) '    total number of coupling points         : ',num_coupling_points_total
+    write(IMAIN,*) '    number of time steps                    : ',ntimesteps
+    write(IMAIN,*) '    time step size                          : ',dt_incr,'s'
+    write(IMAIN,*) '    start time                              : ',tmin_file,'s'
+    write(IMAIN,*) '    end time                                : ',tmax_file,'s'
+    write(IMAIN,*)
+    call flush_IMAIN()
+  endif
+
+  ! check number of points (in case setup would have changed)
+  if (num_coupling_points_total /= npoints_total) then
+    print *,'Error: rank ',myrank,' found an invalid number of total boundary points ',num_coupling_points_total
+    print *,'       total number of boundary points for this simulation should be ',npoints_total
+    print *,'       Please check if solution file was computed for this small-scale simulation.'
+    call exit_MPI(myrank,'Invalid number of boundary points found')
+  endif
+
+  ! user output
+  if (myrank == 0) then
+    write(IMAIN,*) '  interpolating time series:'
+    write(IMAIN,*) '    maximum number of local coupling points : ',maxval(nb_points_local_per_proc)
+    write(IMAIN,*)
+    ! estimates array memory tmp_veloc_points_timeseries & tmp_traction_points_timeseries
+    sizeval = 2.d0 * dble(NDIM) * dble(maxval(nb_points_local_per_proc)) * dble(ntimesteps) * dble(CUSTOM_REAL)
+    write(IMAIN,*) '    required maximum array size per slice   = ',sngl(sizeval / 1024.d0 / 1024.d0),'MB'
+    write(IMAIN,*) '                                            = ',sngl(sizeval / 1024.d0 / 1024.d0 / 1024.d0),'GB'
+    write(IMAIN,*)
+    call flush_IMAIN()
+  endif
+
+  ! allocate temporary read arrays
+  ! all points
+  allocate(tmp_veloc(NDIM,npoints_total), &
+           tmp_traction(NDIM,npoints_total),stat=ier)
+  if (ier /= 0) stop 'Error allocating tmp_veloc,.. arrays'
+  tmp_veloc(:,:) = 0.0_CUSTOM_REAL
+  tmp_traction(:,:) = 0.0_CUSTOM_REAL
+
+  ! local points, all times
+  allocate(tmp_veloc_points_timeseries(NDIM,ntimesteps,npoints_local), &
+           tmp_traction_points_timeseries(NDIM,ntimesteps,npoints_local),stat=ier)
+  if (ier /= 0) stop 'Error allocating tmp_veloc_points_timeseries,.. arrays'
+  tmp_veloc_points_timeseries(:,:,:) = 0.0_CUSTOM_REAL
+  tmp_traction_points_timeseries(:,:,:) = 0.0_CUSTOM_REAL
+
+  ! read in points and save local time series
+  do i = 1,ntimesteps
+    ! reads current time step values for all points
+    read(IIN) tmp_veloc,tmp_traction
+
+    ! assigns values on local points
+    if (npoints_local > 0) then
+      ipoin_local = 0
+      do ipoin = 1,npoints_total
+        ! takes range between [offset,offset + npoints_local]
+        if (ipoin > offset_proc .and. ipoin <= offset_proc + npoints_local) then
+          ipoin_local = ipoin_local + 1
+          tmp_veloc_points_timeseries(:,i,ipoin_local) = tmp_veloc(:,ipoin)
+          tmp_traction_points_timeseries(:,i,ipoin_local) = tmp_traction(:,ipoin)
+        endif
+      enddo
+      ! check
+      if (ipoin_local /= npoints_local) call exit_MPI(myrank,'Invalid number of local points found')
+    endif
+  enddo
+
+  close(IIN)
+
+  ! free temporary arrays
+  deallocate(tmp_veloc,tmp_traction)
+
+  ! current simulation time range
+  tmin_curr = - t0     ! t0 is positive for negative start times
+  tmax_curr = dble((NSTEP-1)) * DT - t0
+
+  ! user output
+  if (myrank == 0) then
+    write(IMAIN,*) '    current simulation time steps           : ',NSTEP
+    write(IMAIN,*) '                       time step size       : ',DT,'s'
+    write(IMAIN,*) '                       start time           : ',tmin_curr,'s'
+    write(IMAIN,*) '                       end time             : ',tmax_curr,'s'
+    write(IMAIN,*)
+    call flush_IMAIN()
+  endif
+
+  ! check time range of current simulation versus time span covered by solution file
+  if (tmin_curr >= tmax_file .or. tmax_curr <= tmin_file) then
+    print *,'Error: Invalid time range of current simulation: time is outside of time range of solution file'
+    print *,'       time range of solution file (tmin/tmax)   = ',tmin_file,'/',tmax_file
+    print *,'       current simulation time range (tmin/tmax) = ',tmin_curr,'/',tmax_curr
+    print *,'       Please check simulation setup and/or use INJECTION_START_TIME in Par_file to specify, now exiting...'
+    call exit_MPI(myrank,'Invalid time range for coupled injection simulation')
+  endif
+
+  if (tmin_curr < tmin_file) then
+    ! user warning
+    if (myrank == 0) then
+      write(IMAIN,*) 'Warning: current simulation starts before start time of solution file!'
+      write(IMAIN,*) '         time range of solution file (tmin/tmax)   = ',tmin_file,'/',tmax_file
+      write(IMAIN,*) '         current simulation time range (tmin/tmax) = ',tmin_curr,'/',tmax_curr
+      write(IMAIN,*)
+      call flush_IMAIN()
+    endif
+  endif
+
+  ! creates name for each rank process
+  ! format: {TRACTION_PATH} / proc***_
+  call create_name_database(prname_trac,myrank,TRACTION_PATH)
+
+  filename = trim(prname_trac) // 'sol_specfem.bin'
+
+  ! user output
+  if (myrank == 0) then
+    write(IMAIN,*) '    preparing tractions files...'
+    write(IMAIN,*) '    for slice 0 file is ',trim(filename)
+    write(IMAIN,*)
+    ! filesize estimation
+    sizeval = 2.d0 * dble(NDIM) * dble(maxval(nb_points_local_per_proc)) * dble(NSTEP) * dble(CUSTOM_REAL)
+    write(IMAIN,*) '    estimated maximum file size per proc    = ',sngl(sizeval / 1024.d0 / 1024.d0),'MB'
+    write(IMAIN,*) '                                            = ',sngl(sizeval / 1024.d0 / 1024.d0 / 1024.d0),'GB'
+    write(IMAIN,*)
+    call flush_IMAIN()
+  endif
+
+  ! open files to store wavefield solution for this slice and simulation time stepping
+  open(unit=IOUT,file=trim(filename),status='unknown',action='write',form='unformatted',iostat=ier)
+  if (ier /= 0) then
+    print *,'Error: could not open file ',trim(filename)
+    print *,'       Please check if path exists...'
+    stop 'Error opening database proc***_sol_specfem.bin'
+  endif
+
+  ! boundary arrays for reading/writing
+  allocate(Veloc_specfem(NDIM,npoints_local),stat=ier)
+  if (ier /= 0) call exit_MPI(myrank,'error allocating array 2192')
+  Veloc_specfem(:,:) = 0.0_CUSTOM_REAL
+
+  allocate(Tract_specfem(NDIM,npoints_local),stat=ier)
+  if (ier /= 0) call exit_MPI(myrank,'error allocating array 2193')
+  Tract_specfem(:,:) = 0.0_CUSTOM_REAL
+
+  ! interpolate wavefield solution in time
+  !
+  ! Sinc (Whittaker-Shannon) interpolation:
+  !   continuous over whole range, most accurate, also very accurate in frequency domain
+  !
+  ! Cubic splines interpolation:
+  !   continuous derivatives over whole range
+  !
+  ! Catmull-Rom (cubic):
+  !   cubic interpolation, local on neighbors, smooth on equidistant samples and exact at nodal points
+  !
+  ! cubic local:
+  !   cubic interpolation, local on neighbors
+  !
+  ! time series interpolation - timing benchmark:
+  !   given input: total number of coupling points (npoints_total)         = 68800
+  !                number of time steps (ntimesteps)                       = 2500
+  !
+  !   interpolating time series for file output:
+  !                maximum number of local coupling points (npoints_local) = 17200
+  !                current simulation time steps (NSTEP)                   = 10000
+  !
+  !
+  ! -> interpolation with sinc (Whittaker–Shannon) takes around ~ 601.24 s
+  !                       cubic splines                         ~ 586.76 s
+  !                       Catmull-Rom                           ~  22.68 s
+  !                       cubic local                           ~  17.71 s
+  !
+  ! as a conclusion, unless we need a very high accurary in frequency-domain (sinc interpolation),
+  ! the Catmull-Rom interpolation provides the best trade-off between accuracy and speed for time series interpolation.
+  !
+  ! used for testing...
+  ! sinc (Whittaker–Shannon) interpolation in time
+  !call interpolate_with_sinc(ntimesteps,dt_incr,start_time, &
+  !                           tmp_veloc_points_timeseries,tmp_traction_points_timeseries)
+  !
+  ! cubic splines
+  !call interpolate_with_cubic_splines(ntimesteps,dt_incr,start_time, &
+  !                                    tmp_veloc_points_timeseries,tmp_traction_points_timeseries)
+  !
+  ! cubic
+  !call interpolate_with_cubic_local(ntimesteps,dt_incr,start_time, &
+  !                                  tmp_veloc_points_timeseries,tmp_traction_points_timeseries)
+  !
+
+  ! Catmull-Rom interpolation (preferred)
+  call interpolate_with_Catmull_Rom(ntimesteps,dt_incr,start_time, &
+                                    tmp_veloc_points_timeseries,tmp_traction_points_timeseries)
+
+  ! free temporary arrays
+  deallocate(tmp_veloc_points_timeseries,tmp_traction_points_timeseries)
+
+  ! clear arrays for reading
+  Veloc_specfem(:,:) = 0.0_CUSTOM_REAL
+  Tract_specfem(:,:) = 0.0_CUSTOM_REAL
+
+  ! open the file created before
+  ! to read in corresponding time slices in routine compute_Stacey_elastic()
+  open(unit=IIN_veloc_dsm,file=trim(filename),status='old',action='read',form='unformatted',iostat=ier)
+  if (ier /= 0) then
+    print *,'Error: could not open file ',trim(filename)
+    print *,'Please check if traction file has been created for coupling with SPECFEM solution...'
+    stop 'Error opening tractions file proc****_sol_specfem.bin'
+  endif
+
+  ! synchronizes MPI processes
+  call synchronize_all()
+
+  ! user output
+  if (myrank == 0) then
+    ! elapsed time since beginning of mesh generation
+    tCPU = wtime() - tstart
+    write(IMAIN,*)
+    write(IMAIN,*) '  Elapsed time for preparing coupling files in seconds = ',sngl(tCPU)
+    write(IMAIN,*)
+    call flush_IMAIN()
+  endif
+
+  end subroutine couple_with_injection_prepare_specfem_files
+
+!
+!-------------------------------------------------------------------------------------------------
+!
+
+  subroutine interpolate_with_Catmull_Rom(ntimesteps,dt_incr,start_time, &
+                                            tmp_veloc_points_timeseries,tmp_traction_points_timeseries)
+
+! interpolates velocity & traction for current simulation times using Catmull-Rom (cubic) interpolation
+
+  use constants, only: myrank,CUSTOM_REAL,NDIM,IMAIN,IOUT,OUTPUT_FILES
+
+  use shared_parameters, only: DT,NSTEP
+
+  use specfem_par, only: t0
+
+  use specfem_par_coupling, only: npoints_local,Veloc_specfem,Tract_specfem
+
+  implicit none
+
+  integer, intent(in) :: ntimesteps
+  double precision, intent(in) :: dt_incr,start_time
+  real(kind=CUSTOM_REAL), dimension(NDIM,ntimesteps,npoints_local), intent(in) :: tmp_veloc_points_timeseries, &
+                                                                                  tmp_traction_points_timeseries
+
+  ! local parameters
+  integer :: it_tmp,ipoin_local,i
+  double precision :: current_time
+  double precision :: tmin_file,tmax_file
+
+  ! interpolation
+  real(kind=CUSTOM_REAL),dimension(NDIM) :: vel_p0,vel_p1,vel_p2,vel_p3
+  real(kind=CUSTOM_REAL),dimension(NDIM) :: vel_a,vel_b,vel_c,vel_d
+  real(kind=CUSTOM_REAL),dimension(NDIM) :: tract_p0,tract_p1,tract_p2,tract_p3
+  real(kind=CUSTOM_REAL),dimension(NDIM) :: tract_a,tract_b,tract_c,tract_d
+
+  real(kind=CUSTOM_REAL) :: xi
+  integer :: idx,idx0,idx1,idx2,idx3
+
+  ! timing
+  double precision :: tstart,tCPU
+  double precision, external :: wtime
+
+  ! debugging - turn on to check accuracy of interpolated time serie
+  logical, parameter :: DEBUG = .false.     ! only works if myrank == 0 has local points to interpolate
+
+  ! user output
+  if (myrank == 0) then
+    write(IMAIN,*) '    using Catmull-Rom (cubic) interpolation'
+    call flush_IMAIN()
+  endif
+
+  ! checks if anything to do in this slice
+  if (npoints_local == 0) return
+
+  ! debug file output
+  if (DEBUG .and. myrank == 0) then
+    ! time series from solution file
+    open(87,file=trim(OUTPUT_FILES)//'/debug_timeseries_vel.txt',status='unknown',action='write')
+    do i = 1,ntimesteps
+      ! format: # time # vel_Z
+      write(87,*) dble((i-1)) * dt_incr + start_time, tmp_veloc_points_timeseries(3,i,1000)  ! at local point 1000
+    enddo
+    close(87)
+    ! interpolated time series
+    open(87,file=trim(OUTPUT_FILES)//'/debug_timeseries_vel_interpol.txt',status='unknown',action='write')
+  endif
+
+  ! get MPI starting time
+  tstart = wtime()
+
+  ! solution file time range
+  tmin_file = start_time  ! start_time is negative
+  tmax_file = dble(ntimesteps-1) * dt_incr + start_time
+
+  ! loop over time steps of current "small-scale" simulation
+  do it_tmp = 1,NSTEP
+    ! current simulation time
+    current_time = dble((it_tmp-1)) * DT - t0
+
+    ! checks if current_time is out of bounds
+    if (current_time < tmin_file .or. current_time > tmax_file) then
+      ! time outside of provided time range
+      ! set to zero
+      Veloc_specfem(:,:) = 0.0_CUSTOM_REAL
+      Tract_specfem(:,:) = 0.0_CUSTOM_REAL
+    else
+      ! Catmull-Rom (cubic) interpolation:
+      ! needs 4 points p0,p1,p2,p3 and interpolates point p(t) between point p1 and p2
+      ! see: https://www.iquilezles.org/www/articles/minispline/minispline.htm
+
+      ! determine time interval index
+      idx = int( (current_time - tmin_file) / dt_incr) + 1
+
+      ! checks bounds
+      if (idx < 1) idx = 1
+      if (idx > ntimesteps) idx = ntimesteps
+
+      ! relative offset between [0,1] in interval [idx-1,idx] of time series
+      xi = real( ((current_time - tmin_file) - (idx-1) * dt_incr) / dt_incr, kind=CUSTOM_REAL)
+
+      ! interpolation points
+      ! at the boundaries idx == 1, idx < ntimesteps-1, we take the limited values and mimick interpolation in these cases.
+      if (idx == 1) then
+        idx0 = idx    ! no previous one, use same as idx1
+        idx1 = idx
+        idx2 = idx+1
+        idx3 = idx+2
+      else if (idx == ntimesteps - 1) then
+        idx0 = idx-1
+        idx1 = idx
+        idx2 = idx+1
+        idx3 = idx+1  ! no later one, use same as idx2
+      else if (idx == ntimesteps) then
+        idx0 = idx-1
+        idx1 = idx
+        idx2 = idx    ! no later ones
+        idx3 = idx
+      else
+        ! it > 1 .and. it < ntimesteps-1
+        idx0 = idx-1
+        idx1 = idx
+        idx2 = idx+1
+        idx3 = idx+2
+      endif
+
+      do ipoin_local = 1,npoints_local
+        ! velocity
+        ! interpolation points
+        vel_p0(:) = tmp_veloc_points_timeseries(:,idx0,ipoin_local)
+        vel_p1(:) = tmp_veloc_points_timeseries(:,idx1,ipoin_local)
+        vel_p2(:) = tmp_veloc_points_timeseries(:,idx2,ipoin_local)
+        vel_p3(:) = tmp_veloc_points_timeseries(:,idx3,ipoin_local)
+
+        ! Catmull-Rom interpolation
+        !   a = 2 * p1
+        !   b = p2 - p0
+        !   c = 2 * p0 - 5 * p1 + 4 * p2 - p3
+        !   d = -p0 + 3 * p1 - 3 * p2 + p3
+        !   and interpolate value at xi
+        !   val = 1/2 * ( a + b * xi + c * xi^2 + d * xi^3 )
+        !
+        vel_a(:) = 2.0_CUSTOM_REAL * vel_p1(:)
+        vel_b(:) = vel_p2(:) - vel_p0(:)
+        vel_c(:) = 2.0_CUSTOM_REAL * vel_p0(:) - 5.0_CUSTOM_REAL * vel_p1(:) + 4.0_CUSTOM_REAL * vel_p2(:) - vel_p3(:)
+        vel_d(:) = -vel_p0(:) + 3.0_CUSTOM_REAL * vel_p1(:) - 3.0_CUSTOM_REAL * vel_p2(:) + vel_p3(:)
+
+        ! cubic polynomial: a + b * t + c * t^2 + d * t^3 = a + t * (b + t * (c + t * d))
+        Veloc_specfem(:,ipoin_local) = 0.5_CUSTOM_REAL * ( vel_a(:) + xi * (vel_b(:) + xi * (vel_c(:) + xi * vel_d(:))))
+
+        ! traction
+        ! interpolation points
+        tract_p0(:) = tmp_traction_points_timeseries(:,idx0,ipoin_local)
+        tract_p1(:) = tmp_traction_points_timeseries(:,idx1,ipoin_local)
+        tract_p2(:) = tmp_traction_points_timeseries(:,idx2,ipoin_local)
+        tract_p3(:) = tmp_traction_points_timeseries(:,idx3,ipoin_local)
+
+        ! Catmull-Rom interpolation
+        tract_a(:) = 2.0_CUSTOM_REAL * tract_p1(:)
+        tract_b(:) = tract_p2(:) - tract_p0(:)
+        tract_c(:) = 2.0_CUSTOM_REAL * tract_p0(:) - 5.0_CUSTOM_REAL * tract_p1(:) + 4.0_CUSTOM_REAL * tract_p2(:) - tract_p3(:)
+        tract_d(:) = -tract_p0(:) + 3.0_CUSTOM_REAL * tract_p1(:) - 3.0_CUSTOM_REAL * tract_p2(:) + tract_p3(:)
+
+        ! cubic polynomial: a + b * t + c * t^2 + d * t^3 = a + t * (b + t * (c + t * d))
+        Tract_specfem(:,ipoin_local) = 0.5_CUSTOM_REAL * ( tract_a(:) + xi * (tract_b(:) + xi * (tract_c(:) + xi * tract_d(:))))
+      enddo
+    endif
+
+    ! store in file
+    write(IOUT) Veloc_specfem,Tract_specfem
+
+    ! user output
+    if (myrank == 0) then
+      if (mod(it_tmp,NSTEP/10) == 0) then
+        tCPU = wtime() - tstart
+        write(IMAIN,*) '    interpolated time step ',it_tmp,'out of',NSTEP,' - elapsed time:',sngl(tCPU),'s'
+        call flush_IMAIN()
+      endif
+    endif
+
+    ! debug file output
+    if (DEBUG .and. myrank == 0) then
+      ! format: # time # vel_Z
+      write(87,*) current_time, Veloc_specfem(3,1000)  ! at local point 1000
+    endif
+  enddo
+
+  ! debug file output
+  if (DEBUG .and. myrank == 0) close(87)
+
+  end subroutine interpolate_with_Catmull_Rom
+
+!
+!-------------------------------------------------------------------------------------------------
+!
+
+! used for testing...
+
+!  subroutine interpolate_with_sinc(ntimesteps,dt_incr,start_time, &
+!                                   tmp_veloc_points_timeseries,tmp_traction_points_timeseries)
+!
+!! interpolates velocity & traction for current simulation times using Sinc (Whittaker–Shannon) interpolation
+!
+!  use constants, only: myrank,CUSTOM_REAL,NDIM,IMAIN,IOUT,OUTPUT_FILES
+!
+!  use shared_parameters, only: DT,NSTEP
+!
+!  use specfem_par, only: t0
+!
+!  use specfem_par_coupling, only: npoints_local,Veloc_specfem,Tract_specfem
+!
+!  implicit none
+!
+!  integer, intent(in) :: ntimesteps
+!  double precision, intent(in) :: dt_incr,start_time
+!  real(kind=CUSTOM_REAL), dimension(NDIM,ntimesteps,npoints_local), intent(in) :: tmp_veloc_points_timeseries, &
+!                                                                                  tmp_traction_points_timeseries
+!
+!  ! local parameters
+!  integer :: it_tmp,ipoin_local,i
+!  double precision :: current_time
+!  double precision :: tmin_file,tmax_file
+!
+!  real(kind=CUSTOM_REAL), dimension(ntimesteps) :: sinc_table
+!  real(kind=CUSTOM_REAL) :: vel(NDIM),trac(NDIM)
+!
+!  ! timing
+!  double precision :: tstart,tCPU
+!  double precision, external :: wtime
+!
+!  ! debugging
+!  logical, parameter :: DEBUG = .true.     ! only works if myrank == 0 has local points to interpolate
+!
+!  ! user output
+!  if (myrank == 0) then
+!    write(IMAIN,*) '    using sinc interpolation'
+!    call flush_IMAIN()
+!  endif
+!
+!  ! checks if anything to do in this slice
+!  if (npoints_local == 0) return
+!
+!  ! debug file output
+!  if (DEBUG .and. myrank == 0) then
+!    ! time series from solution file
+!    open(87,file=trim(OUTPUT_FILES)//'/debug_timeseries_vel.txt',status='unknown',action='write')
+!    do i = 1,ntimesteps
+!      ! format: # time # vel_Z
+!      write(87,*) dble((i-1)) * dt_incr + start_time, tmp_veloc_points_timeseries(3,i,1000)  ! at local point 1000
+!    enddo
+!    close(87)
+!    ! interpolated time series
+!    open(87,file=trim(OUTPUT_FILES)//'/debug_timeseries_vel_interpol.txt',status='unknown',action='write')
+!  endif
+!
+!  ! get MPI starting time
+!  tstart = wtime()
+!
+!  ! solution file time range
+!  tmin_file = start_time  ! start_time is negative
+!  tmax_file = dble(ntimesteps-1) * dt_incr + start_time
+!
+!  ! loop over time steps of current "small-scale" simulation
+!  do it_tmp = 1,NSTEP
+!    ! current simulation time
+!    current_time = dble((it_tmp-1)) * DT - t0
+!
+!    ! checks if current_time is out of bounds
+!    if (current_time < tmin_file .or. current_time > tmax_file) then
+!      ! time outside of provided time range
+!      ! set to zero
+!      Veloc_specfem(:,:) = 0.0_CUSTOM_REAL
+!      Tract_specfem(:,:) = 0.0_CUSTOM_REAL
+!    else
+!      ! sinc interpolation
+!      ! setup sinc table to determine values at current_time
+!      call compute_sinc_table(sinc_table,current_time,ntimesteps,dt_incr,start_time)
+!
+!      ! loop over points in this slice
+!      do ipoin_local = 1,npoints_local
+!        ! interpolate over solution time span
+!        vel(:) = 0.0_CUSTOM_REAL
+!        trac(:) = 0.0_CUSTOM_REAL
+!        do i = 1,ntimesteps
+!          ! velocity
+!          vel(:) = vel(:) + sinc_table(i) * tmp_veloc_points_timeseries(:,i,ipoin_local)
+!          ! traction
+!          trac(:) = trac(:) + sinc_table(i) * tmp_traction_points_timeseries(:,i,ipoin_local)
+!        enddo
+!
+!        ! store interpolated arrays for the current time
+!        Veloc_specfem(:,ipoin_local) = vel(:)
+!        Tract_specfem(:,ipoin_local) = trac(:)
+!      enddo
+!    endif
+!
+!    ! store in file
+!    write(IOUT) Veloc_specfem,Tract_specfem
+!
+!    ! user output
+!    if (myrank == 0) then
+!      if (mod(it_tmp,NSTEP/10) == 0) then
+!        tCPU = wtime() - tstart
+!        write(IMAIN,*) '    interpolated time step ',it_tmp,'out of',NSTEP,' - elapsed time:',sngl(tCPU),'s'
+!        call flush_IMAIN()
+!      endif
+!    endif
+!
+!    ! debug file output
+!    if (DEBUG .and. myrank == 0) then
+!      ! format: # time # vel_Z
+!      write(87,*) current_time, Veloc_specfem(3,1000)  ! at local point 1000
+!    endif
+!  enddo
+!
+!  ! debug file output
+!  if (DEBUG .and. myrank == 0) close(87)
+!
+!  end subroutine interpolate_with_sinc
+!
+!!
+!!-------------------------------------------------------------------------------------------------
+!!
+!
+!  subroutine compute_sinc_table(sinc_tab,tcurrent,n,dt,t0)
+!
+!  ! computes table for sinc (Whittaker–Shannon) interpolation
+!
+!  use constants, only: CUSTOM_REAL
+!
+!  implicit none
+!
+!  integer, intent(in) :: n
+!  real(kind=CUSTOM_REAL), intent(out) :: sinc_tab(n)
+!  double precision, intent(in) :: tcurrent,dt,t0
+!
+!  ! local parameters
+!  integer :: i
+!  real(kind=CUSTOM_REAL) :: t_sinc, dt_inv
+!
+!  ! inverted time step (multiplication will be faster than division)
+!  dt_inv = real(1.d0 / dt,kind=CUSTOM_REAL)
+!
+!  do i = 1,n
+!    ! time diff argument: sinc( (t - nT)/T ) with T the time step of the given time series
+!    t_sinc = real((tcurrent - (dble(i-1) * dt + t0) ),kind=CUSTOM_REAL) * dt_inv
+!
+!    ! store interpolation table
+!    sinc_tab(i) = func_mysinc(t_sinc)
+!  enddo
+!
+!contains
+!
+!    ! Sinc function
+!    function func_mysinc(x) result (sincval)
+!
+!    use constants, only: CUSTOM_REAL
+!
+!    implicit none
+!    real(kind=CUSTOM_REAL), intent(in) :: x
+!    real(kind=CUSTOM_REAL) :: sincval
+!
+!    ! local parameters
+!    real(kind=CUSTOM_REAL) :: xn
+!    real(kind=CUSTOM_REAL), parameter :: PI = 3.141592653589793_CUSTOM_REAL
+!
+!    ! normalized sinc function
+!    if (abs(x) > 1.e-6) then
+!      ! using PI * x instead of just x as in the unnormalized sinc function
+!      ! note: for x = 1.d-6 sin( PI*x ) / ( PI*x) ~ 0.999999999998
+!      xn = PI * x
+!      sincval = sin(xn) / xn
+!    else
+!      ! sinc function value at x == 0
+!      sincval = 1.0_CUSTOM_REAL
+!    endif
+!
+!    end function func_mysinc
+!
+!  end subroutine compute_sinc_table
+
+!
+!-------------------------------------------------------------------------------------------------
+!
+
+! used for testing...
+
+!  subroutine interpolate_with_cubic_splines(ntimesteps,dt_incr,start_time, &
+!                                            tmp_veloc_points_timeseries,tmp_traction_points_timeseries)
+!
+!! interpolates velocity & traction for current simulation times using cubic splines
+!
+!  use constants, only: myrank,CUSTOM_REAL,NDIM,IMAIN,IOUT,OUTPUT_FILES
+!
+!  use shared_parameters, only: DT,NSTEP
+!
+!  use specfem_par, only: t0
+!
+!  use specfem_par_coupling, only: npoints_local,Veloc_specfem,Tract_specfem
+!
+!  implicit none
+!
+!  integer, intent(in) :: ntimesteps
+!  double precision, intent(in) :: dt_incr,start_time
+!  real(kind=CUSTOM_REAL), dimension(NDIM,ntimesteps,npoints_local), intent(in) :: tmp_veloc_points_timeseries, &
+!                                                                                  tmp_traction_points_timeseries
+!
+!  ! local parameters
+!  integer :: it_tmp,ipoin_local,i,icomp,ier
+!  double precision :: current_time
+!  double precision :: tmin_file,tmax_file
+!
+!  ! cubic splines
+!  ! note: coefficient a is equal to initial values from timeseries
+!  real(kind=CUSTOM_REAL), dimension(:,:,:), allocatable :: vel_coeffs_b, vel_coeffs_c, vel_coeffs_d
+!  real(kind=CUSTOM_REAL), dimension(:,:,:), allocatable :: tract_coeffs_b, tract_coeffs_c, tract_coeffs_d
+!
+!  real(kind=CUSTOM_REAL), dimension(ntimesteps) :: b, c, d, y
+!  real(kind=CUSTOM_REAL) :: xi
+!  integer :: idx
+!
+!  ! timing
+!  double precision :: tstart,tCPU
+!  double precision, external :: wtime
+!
+!  ! debugging
+!  logical, parameter :: DEBUG = .true.     ! only works if myrank == 0 has local points to interpolate
+!
+!  ! user output
+!  if (myrank == 0) then
+!    write(IMAIN,*) '    using cubic spline interpolation'
+!    call flush_IMAIN()
+!  endif
+!
+!  ! checks if anything to do in this slice
+!  if (npoints_local == 0) return
+!
+!  ! debug file output
+!  if (DEBUG .and. myrank == 0) then
+!    ! time series from solution file
+!    open(87,file=trim(OUTPUT_FILES)//'/debug_timeseries_vel.txt',status='unknown',action='write')
+!    do i = 1,ntimesteps
+!      ! format: # time # vel_Z
+!      write(87,*) dble((i-1)) * dt_incr + start_time, tmp_veloc_points_timeseries(3,i,1000)  ! at local point 1000
+!    enddo
+!    close(87)
+!    ! interpolated time series
+!    open(87,file=trim(OUTPUT_FILES)//'/debug_timeseries_vel_interpol.txt',status='unknown',action='write')
+!  endif
+!
+!  ! get MPI starting time
+!  tstart = wtime()
+!
+!  ! pre-compute spline coefficients
+!  ! allocate arrays
+!  allocate(vel_coeffs_b(NDIM,ntimesteps,npoints_local), &
+!           vel_coeffs_c(NDIM,ntimesteps,npoints_local), &
+!           vel_coeffs_d(NDIM,ntimesteps,npoints_local),stat=ier)
+!  if (ier /= 0) stop 'Error allocating spline coefficients for velocity'
+!  vel_coeffs_b(:,:,:) = 0.0_CUSTOM_REAL
+!  vel_coeffs_c(:,:,:) = 0.0_CUSTOM_REAL
+!  vel_coeffs_d(:,:,:) = 0.0_CUSTOM_REAL
+!
+!  allocate(tract_coeffs_b(NDIM,ntimesteps,npoints_local), &
+!           tract_coeffs_c(NDIM,ntimesteps,npoints_local), &
+!           tract_coeffs_d(NDIM,ntimesteps,npoints_local),stat=ier)
+!  if (ier /= 0) stop 'Error allocating spline coefficients for traction'
+!  tract_coeffs_b(:,:,:) = 0.0_CUSTOM_REAL
+!  tract_coeffs_c(:,:,:) = 0.0_CUSTOM_REAL
+!  tract_coeffs_d(:,:,:) = 0.0_CUSTOM_REAL
+!
+!  ! loop over points in this slice
+!  do ipoin_local = 1,npoints_local
+!    ! compute spline coefficients
+!    ! velocity
+!    do icomp = 1,NDIM
+!      do i = 1,ntimesteps
+!        y(i) = tmp_veloc_points_timeseries(icomp,i,ipoin_local)
+!      enddo
+!      ! spline coefficients
+!      call compute_spline_timeseries(y,ntimesteps,dt_incr,b,c,d)
+!      ! store coefficients for evaluation
+!      do i = 1,ntimesteps
+!        vel_coeffs_b(icomp,i,ipoin_local) = b(i)
+!        vel_coeffs_c(icomp,i,ipoin_local) = c(i)
+!        vel_coeffs_d(icomp,i,ipoin_local) = d(i)
+!      enddo
+!    enddo
+!    ! traction
+!    do icomp = 1,NDIM
+!      do i = 1,ntimesteps
+!        y(i) = tmp_traction_points_timeseries(icomp,i,ipoin_local)
+!      enddo
+!      ! spline coefficients
+!      call compute_spline_timeseries(y,ntimesteps,dt_incr,b,c,d)
+!      ! store coefficients for evaluation
+!      do i = 1,ntimesteps
+!        tract_coeffs_b(icomp,i,ipoin_local) = b(i)
+!        tract_coeffs_c(icomp,i,ipoin_local) = c(i)
+!        tract_coeffs_d(icomp,i,ipoin_local) = d(i)
+!      enddo
+!    enddo
+!  enddo
+!
+!  ! user output
+!  if (myrank == 0) then
+!    tCPU = wtime() - tstart
+!    write(IMAIN,*) '    setting up spline coefficients took ',sngl(tCPU),'s'
+!    call flush_IMAIN()
+!  endif
+!
+!  ! solution file time range
+!  tmin_file = start_time  ! start_time is negative
+!  tmax_file = dble(ntimesteps-1) * dt_incr + start_time
+!
+!  ! loop over time steps of current "small-scale" simulation
+!  do it_tmp = 1,NSTEP
+!    ! current simulation time
+!    current_time = dble((it_tmp-1)) * DT - t0
+!
+!    ! checks if current_time is out of bounds
+!    if (current_time < tmin_file .or. current_time > tmax_file) then
+!      ! time outside of provided time range
+!      ! set to zero
+!      Veloc_specfem(:,:) = 0.0_CUSTOM_REAL
+!      Tract_specfem(:,:) = 0.0_CUSTOM_REAL
+!    else
+!      ! cubic spline interpolation
+!
+!      ! determine time interval index
+!      idx = int( (current_time - tmin_file) / dt_incr) + 1
+!
+!      ! offset in interval interval [tmin,tmax] of time series
+!      xi = real( (current_time - tmin_file) - (idx-1) * dt_incr, kind=CUSTOM_REAL)
+!
+!      ! interpolate
+!      ! velocity
+!      do ipoin_local = 1,npoints_local
+!        do icomp = 1,NDIM
+!          Veloc_specfem(icomp,ipoin_local) = tmp_veloc_points_timeseries(icomp,idx,ipoin_local) + &
+!                          xi * (vel_coeffs_b(icomp,idx,ipoin_local) + &
+!                          xi * (vel_coeffs_c(icomp,idx,ipoin_local) + xi * vel_coeffs_d(icomp,idx,ipoin_local)))
+!        enddo
+!      enddo
+!
+!      ! traction
+!      do ipoin_local = 1,npoints_local
+!        do icomp = 1,NDIM
+!          Tract_specfem(icomp,ipoin_local) = tmp_traction_points_timeseries(icomp,idx,ipoin_local) + &
+!                          xi * (tract_coeffs_b(icomp,idx,ipoin_local) + &
+!                          xi * (tract_coeffs_c(icomp,idx,ipoin_local) + xi * tract_coeffs_d(icomp,idx,ipoin_local)))
+!        enddo
+!      enddo
+!    endif
+!
+!    ! store in file
+!    write(IOUT) Veloc_specfem,Tract_specfem
+!
+!    ! user output
+!    if (myrank == 0) then
+!      if (mod(it_tmp,NSTEP/10) == 0) then
+!        tCPU = wtime() - tstart
+!        write(IMAIN,*) '    interpolated time step ',it_tmp,'out of',NSTEP,' - elapsed time:',sngl(tCPU),'s'
+!        call flush_IMAIN()
+!      endif
+!    endif
+!
+!    ! debug file output
+!    if (DEBUG .and. myrank == 0) then
+!      ! format: # time # vel_Z
+!      write(87,*) current_time, Veloc_specfem(3,1000)  ! at local point 1000
+!    endif
+!  enddo
+!
+!  ! debug file output
+!  if (DEBUG .and. myrank == 0) close(87)
+!
+!contains
+!
+!    subroutine compute_spline_timeseries(y,n,dt,b,c,d)
+!
+!    use constants, only: CUSTOM_REAL
+!
+!    implicit none
+!
+!    integer, intent(in) :: n
+!    real(kind=CUSTOM_REAL), dimension(n),intent(in) :: y
+!    double precision, intent(in) :: dt
+!    real(kind=CUSTOM_REAL), dimension(n),intent(out) :: b,c,d
+!
+!    ! local parameters
+!    real(kind=CUSTOM_REAL), dimension(n) :: z
+!    ! Precomputed constants
+!    real(kind=CUSTOM_REAL) :: three_dt_inv,dt_inv
+!    integer :: i
+!
+!    ! Precompute constants
+!    dt_inv = 1.0_CUSTOM_REAL / real(dt_incr,kind=CUSTOM_REAL)
+!    three_dt_inv = 3.0_CUSTOM_REAL * dt_inv
+!
+!    ! Step 1: Compute z values directly
+!    z(1) = 0.0_CUSTOM_REAL  ! initial z array to zero
+!    z(n) = 0.0_CUSTOM_REAL
+!    do i = 2, n-1
+!      z(i) = three_dt_inv * (y(i+1) - 2.0d0 * y(i) + y(i-1))
+!    enddo
+!
+!    ! Step 2: Compute coefficients b, c, d directly
+!
+!    ! note: coefficient a(:) = y(:)
+!
+!    do i = 1, n-1
+!      b(i) = dt_inv * (y(i+1) - y(i)) - dt * (2.0d0 * z(i) + z(i+1)) / 3.0d0
+!      c(i) = z(i)
+!      d(i) = (z(i+1) - z(i)) / (3.0d0 * dt)
+!    enddo
+!
+!    ! final point not needed in evaluation as last point value will be == a(n) == y(n)
+!    b(n) = 0.0_CUSTOM_REAL
+!    c(n) = 0.0_CUSTOM_REAL
+!    d(n) = 0.0_CUSTOM_REAL
+!
+!    end subroutine compute_spline_timeseries
+!
+!  end subroutine interpolate_with_cubic_splines
+
+!
+!-------------------------------------------------------------------------------------------------
+!
+
+! used for testing...
+!
+!  subroutine interpolate_with_cubic_local(ntimesteps,dt_incr,start_time, &
+!                                            tmp_veloc_points_timeseries,tmp_traction_points_timeseries)
+!
+!! interpolates velocity & traction for current simulation times using cubic interpolation locally with 4 points
+!
+!  use constants, only: myrank,CUSTOM_REAL,NDIM,IMAIN,IOUT,OUTPUT_FILES
+!
+!  use shared_parameters, only: DT,NSTEP
+!
+!  use specfem_par, only: t0
+!
+!  use specfem_par_coupling, only: npoints_local,Veloc_specfem,Tract_specfem
+!
+!  implicit none
+!
+!  integer, intent(in) :: ntimesteps
+!  double precision, intent(in) :: dt_incr,start_time
+!  real(kind=CUSTOM_REAL), dimension(NDIM,ntimesteps,npoints_local), intent(in) :: tmp_veloc_points_timeseries, &
+!                                                                                  tmp_traction_points_timeseries
+!
+!  ! local parameters
+!  integer :: it_tmp,ipoin_local,i
+!  double precision :: current_time
+!  double precision :: tmin_file,tmax_file
+!
+!  ! interpolation
+!  real(kind=CUSTOM_REAL),dimension(NDIM) :: p0,p1,p2,p3
+!  real(kind=CUSTOM_REAL) :: cs1,cs2,cs3,cs4
+!
+!  real(kind=CUSTOM_REAL) :: xi
+!  integer :: idx,idx0,idx1,idx2,idx3
+!
+!  ! timing
+!  double precision :: tstart,tCPU
+!  double precision, external :: wtime
+!
+!  ! debugging
+!  logical, parameter :: DEBUG = .true.     ! only works if myrank == 0 has local points to interpolate
+!
+!  ! user output
+!  if (myrank == 0) then
+!    write(IMAIN,*) '    using local (cubic) interpolation'
+!    call flush_IMAIN()
+!  endif
+!
+!  ! checks if anything to do in this slice
+!  if (npoints_local == 0) return
+!
+!  ! debug file output
+!  if (DEBUG .and. myrank == 0) then
+!    ! time series from solution file
+!    open(87,file=trim(OUTPUT_FILES)//'/debug_timeseries_vel.txt',status='unknown',action='write')
+!    do i = 1,ntimesteps
+!      ! format: # time # vel_Z
+!      write(87,*) dble((i-1)) * dt_incr + start_time, tmp_veloc_points_timeseries(3,i,1000)  ! at local point 1000
+!    enddo
+!    close(87)
+!    ! interpolated time series
+!    open(87,file=trim(OUTPUT_FILES)//'/debug_timeseries_vel_interpol.txt',status='unknown',action='write')
+!  endif
+!
+!  ! get MPI starting time
+!  tstart = wtime()
+!
+!  ! solution file time range
+!  tmin_file = start_time  ! start_time is negative
+!  tmax_file = dble(ntimesteps-1) * dt_incr + start_time
+!
+!  ! loop over time steps of current "small-scale" simulation
+!  do it_tmp = 1,NSTEP
+!    ! current simulation time
+!    current_time = dble((it_tmp-1)) * DT - t0
+!
+!    ! checks if current_time is out of bounds
+!    if (current_time < tmin_file .or. current_time > tmax_file) then
+!      ! time outside of provided time range
+!      ! set to zero
+!      Veloc_specfem(:,:) = 0.0_CUSTOM_REAL
+!      Tract_specfem(:,:) = 0.0_CUSTOM_REAL
+!    else
+!      ! cubic interpolation
+!
+!      ! determine time interval index
+!      idx = int( (current_time - tmin_file) / dt_incr) + 1
+!
+!      ! checks bounds
+!      if (idx < 1) idx = 1
+!      if (idx > ntimesteps) idx = ntimesteps
+!
+!      ! relative offset between [0,1] in interval [idx-1,idx] of time series
+!      xi = real( ((current_time - tmin_file) - (idx-1) * dt_incr) / dt_incr, kind=CUSTOM_REAL)
+!
+!      ! Cubic (spline?) values
+!      !
+!      ! w == 0 -> c1 = 1/6, c2 = 2/3, c3 = 1/6, c4 = 0
+!      ! w == 1 -> c1 = 0  , c2 = 1/6, c3 = 2/3, c4 = 1/6
+!      cs4 = xi * xi * xi / 6.d0
+!      cs1 = 1.d0/6.d0 + xi * (xi-1.d0) / 2.d0 - cs4
+!      cs3 = xi + cs1 - 2.d0 * cs4
+!      cs2 = 1.d0 - cs1 - cs3 - cs4
+!
+!      ! interpolation points
+!      ! at the boundaries idx == 1, idx < ntimesteps-1, we take the limited values and mimick interpolation in these cases.
+!      if (idx == 1) then
+!        idx0 = idx    ! no previous one, use same as idx1
+!        idx1 = idx
+!        idx2 = idx+1
+!        idx3 = idx+2
+!      else if (idx == ntimesteps - 1) then
+!        idx0 = idx-1
+!        idx1 = idx
+!        idx2 = idx+1
+!        idx3 = idx+1  ! no later one, use same as idx2
+!      else if (idx == ntimesteps) then
+!        idx0 = idx-1
+!        idx1 = idx
+!        idx2 = idx    ! no later ones
+!        idx3 = idx
+!      else
+!        ! it > 1 .and. it < ntimesteps-1
+!        idx0 = idx-1
+!        idx1 = idx
+!        idx2 = idx+1
+!        idx3 = idx+2
+!      endif
+!
+!      ! interpolation indices
+!      !idx0 = idx-1        ! 0,..
+!      !idx1 = idx
+!      !idx2 = idx+1        ! 2,..
+!      !idx3 = idx+2        ! 3,..
+!      !if (idx0 < 1) iim1 = 1
+!      !if (idx2 > ntimesteps) idx2 = ntimesteps
+!      !if (idx3 > ntimesteps) idx3 = ntimesteps
+!
+!      ! interpolates velocity/traction on all local coupling points
+!      do ipoin_local = 1,npoints_local
+!        ! velocity
+!        ! interpolation points
+!        p0(:) = tmp_veloc_points_timeseries(:,idx0,ipoin_local)
+!        p1(:) = tmp_veloc_points_timeseries(:,idx1,ipoin_local)
+!        p2(:) = tmp_veloc_points_timeseries(:,idx2,ipoin_local)
+!        p3(:) = tmp_veloc_points_timeseries(:,idx3,ipoin_local)
+!
+!        ! interpolated velocity
+!        Veloc_specfem(:,ipoin_local) = cs1 * p0(:) + cs2 * p1(:) + cs3 * p2(:) + cs4 * p3(:)
+!
+!        ! traction
+!        ! interpolation points
+!        p0(:) = tmp_traction_points_timeseries(:,idx0,ipoin_local)
+!        p1(:) = tmp_traction_points_timeseries(:,idx1,ipoin_local)
+!        p2(:) = tmp_traction_points_timeseries(:,idx2,ipoin_local)
+!        p3(:) = tmp_traction_points_timeseries(:,idx3,ipoin_local)
+!
+!        ! interpolated traction
+!        Tract_specfem(:,ipoin_local) = cs1 * p0(:) + cs2 * p1(:) + cs3 * p2(:) + cs4 * p3(:)
+!      enddo
+!    endif
+!
+!    ! store in file
+!    write(IOUT) Veloc_specfem,Tract_specfem
+!
+!    ! user output
+!    if (myrank == 0) then
+!      if (mod(it_tmp,NSTEP/10) == 0) then
+!        tCPU = wtime() - tstart
+!        write(IMAIN,*) '    interpolated time step ',it_tmp,'out of',NSTEP,' - elapsed time:',sngl(tCPU),'s'
+!        call flush_IMAIN()
+!      endif
+!    endif
+!
+!    ! debug file output
+!    if (DEBUG .and. myrank == 0) then
+!      ! format: # time # vel_Z
+!      write(87,*) current_time, Veloc_specfem(3,1000)  ! at local point 1000
+!    endif
+!  enddo
+!
+!  ! debug file output
+!  if (DEBUG .and. myrank == 0) close(87)
+!
+!  end subroutine interpolate_with_cubic_local
+
+
+!
+!-------------------------------------------------------------------------------------------------
+!
+
+  subroutine couple_with_injection_cleanup()
+
+  use constants
+  use shared_parameters, only: INJECTION_TECHNIQUE_TYPE,RECIPROCITY_AND_KH_INTEGRAL
+  use specfem_par_coupling
+
+  implicit none
+  ! free coupling arrays and close files
+  select case(INJECTION_TECHNIQUE_TYPE)
+
+  case (INJECTION_TECHNIQUE_IS_DSM)
+    deallocate(Veloc_dsm_boundary,Tract_dsm_boundary)
+    if (old_DSM_coupling_from_Vadim) then
+      close(IIN_veloc_dsm)
+      close(IIN_tract_dsm)
+    endif
+
+  case (INJECTION_TECHNIQUE_IS_AXISEM)
+    deallocate(Veloc_axisem,Tract_axisem)
+    close(IIN_veloc_dsm)
+
+    if (RECIPROCITY_AND_KH_INTEGRAL) then
+      deallocate(Displ_axisem_time,Tract_axisem_time)
+      deallocate(Displ_specfem_time,Tract_specfem_time)
+      if (.not. SAVE_RUN_BOUN_FOR_KH_INTEGRAL) then
+        close(IIN_displ_axisem)
+      endif
+    endif
+
+  case (INJECTION_TECHNIQUE_IS_FK)
+    deallocate(Veloc_FK,Tract_FK)
+
+  case (INJECTION_TECHNIQUE_IS_SPECFEM)
+    deallocate(Veloc_specfem,Tract_specfem)
+    close(IIN_veloc_dsm)
+
+  end select
+
+  end subroutine couple_with_injection_cleanup

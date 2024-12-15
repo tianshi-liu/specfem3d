@@ -757,9 +757,11 @@
 
   subroutine save_arrays_solver_injection_boundary()
 
-  use constants, only: myrank,NGLLSQUARE,IMAIN,IOUT
+  use constants, only: myrank,NGLLSQUARE,IMAIN,IOUT,itag, &
+    INJECTION_TECHNIQUE_IS_AXISEM,INJECTION_TECHNIQUE_IS_DSM,INJECTION_TECHNIQUE_IS_FK,INJECTION_TECHNIQUE_IS_SPECFEM
 
-  use shared_parameters, only: COUPLE_WITH_INJECTION_TECHNIQUE,MESH_A_CHUNK_OF_THE_EARTH
+  use shared_parameters, only: COUPLE_WITH_INJECTION_TECHNIQUE,MESH_A_CHUNK_OF_THE_EARTH, &
+    INJECTION_TECHNIQUE_TYPE,TRACTION_PATH,NPROC
 
   ! global indices
   use generate_databases_par, only: ibool
@@ -771,59 +773,263 @@
   ! local parameters
   integer :: ier,i,j,k
   integer :: iface, ispec, iglob, igll
-  real(kind=CUSTOM_REAL) :: nx,ny,nz
+  real(kind=CUSTOM_REAL) :: x,y,z,nx,ny,nz
   character(len=MAX_STRING_LEN) :: filename
+  logical :: file_exists
+
+  real(kind=CUSTOM_REAL),dimension(:,:),allocatable :: coupling_points
+  integer :: num_coupling_points,num_coupling_points_total
+  integer :: ipoin,iproc
+  integer,dimension(0:NPROC-1) :: nb_points_per_proc
 
   ! checks if anything to do
   if (.not. (COUPLE_WITH_INJECTION_TECHNIQUE .or. MESH_A_CHUNK_OF_THE_EARTH)) return
 
   if (myrank == 0) then
+    write(IMAIN,*)
     write(IMAIN,*) '     saving mesh files for coupled injection boundary'
+    select case (INJECTION_TECHNIQUE_TYPE)
+    case (INJECTION_TECHNIQUE_IS_DSM)
+      write(IMAIN,*) '       injection technique type is DSM'
+    case (INJECTION_TECHNIQUE_IS_AXISEM)
+      write(IMAIN,*) '       injection technique type is AxiSEM'
+    case (INJECTION_TECHNIQUE_IS_FK)
+      write(IMAIN,*) '       injection technique type is FK'
+    case (INJECTION_TECHNIQUE_IS_SPECFEM)
+      write(IMAIN,*) '       injection technique type is SPECFEM'
+    case default
+      write(IMAIN,*) '       injection technique not recognized'
+      stop 'Invalid injection technique type'
+    end select
     call flush_IMAIN()
   endif
 
-  filename = prname(1:len_trim(prname))//'absorb_dsm'
-  open(IOUT,file=filename(1:len_trim(filename)),status='unknown',form='unformatted',iostat=ier)
-  if (ier /= 0) stop 'error opening file absorb_dsm'
-  write(IOUT) num_abs_boundary_faces
-  write(IOUT) abs_boundary_ispec
-  write(IOUT) abs_boundary_ijk
-  write(IOUT) abs_boundary_jacobian2Dw
-  write(IOUT) abs_boundary_normal
-  close(IOUT)
+  ! SPECFEM coupling uses own format
+  select case (INJECTION_TECHNIQUE_TYPE)
+  case (INJECTION_TECHNIQUE_IS_SPECFEM)
+    ! coupling w/ SPECFEM simulation format
+    ! uses TRACTION_PATH directory specified in Par_file to store coupling boundary points
 
-  filename = prname(1:len_trim(prname))//'inner'
-  open(IOUT,file=filename(1:len_trim(filename)),status='unknown',form='unformatted',iostat=ier)
-  write(IOUT) ispec_is_inner
-  write(IOUT) ispec_is_elastic
-  close(IOUT)
+    ! check if TRACTION_PATH directory exists and can be used
+    if (myrank == 0) then
+      ! user output
+      write(IMAIN,*) '       using coupling directory (TRACTION_PATH): ',trim(TRACTION_PATH)
+      write(IMAIN,*)
+      call flush_IMAIN()
 
-  !! VM VM write an ascii file for instaseis input
-  filename = prname(1:len_trim(prname))//'normal.txt'
-  open(IOUT,file=filename(1:len_trim(filename)),status='unknown',iostat=ier)
-  write(IOUT, *) ' number of points :', num_abs_boundary_faces*NGLLSQUARE
+      ! tests if TRACTION_PATH directory exists
+      ! note: inquire behaves differently when using intel ifort or gfortran compilers
+      !INQUIRE( FILE = trim(TRACTION_PATH))//'/.', EXIST = exists)
+      open(IOUT,file=trim(TRACTION_PATH)//'/dummy.txt',status='unknown',iostat=ier)
+      if (ier /= 0) then
+        print *,"TRACTION_PATH directory for coupling boundary does not work: ",trim(TRACTION_PATH)
+        print *,"Please check your Par_file setting..."
+        call exit_MPI(myrank,'Error TRACTION_PATH directory for coupling with injection technique')
+      endif
+      close(IOUT,status='delete')
+    endif
+    call synchronize_all()
 
-  do iface = 1,num_abs_boundary_faces
-     ispec = abs_boundary_ispec(iface)
-     if (ispec_is_elastic(ispec)) then
-        do igll = 1,NGLLSQUARE
+    ! filename for coupling point information
+    filename = trim(TRACTION_PATH) // '/' // 'specfem_coupling_points.bin'
 
-           ! gets local indices for GLL point
-           i = abs_boundary_ijk(1,igll,iface)
-           j = abs_boundary_ijk(2,igll,iface)
-           k = abs_boundary_ijk(3,igll,iface)
+    ! checks if we need to create coupling point file
+    inquire(file=trim(filename),exist=file_exists)
+    if (file_exists) then
+      ! found existing file
+      if (myrank == 0) then
+        write(IMAIN,*) '       found existing coupling point file: ',trim(filename)
+        write(IMAIN,*) '       no need to re-compute injection boundary points, will continue...'
+        write(IMAIN,*)
+        call flush_IMAIN()
+      endif
+      ! all done
+      return
+    endif
 
-           iglob = ibool(i,j,k,ispec)
+    ! note: coupling points stored from (absorbing) boundary mesh faces will have shared nodes.
+    !       we could remove shared nodes and store only unique node positions to reduce the number of coupling points
+    !       and later re-assign the wavefield solutions to all boundary points.
+    !
+    !       however, a shared node might still have different normal components for different faces (corners,topography,..).
+    !       we therefore store all boundary points and won't try to remove duplicates.
 
-           nx = abs_boundary_normal(1,igll,iface)
-           ny = abs_boundary_normal(2,igll,iface)
-           nz = abs_boundary_normal(3,igll,iface)
+    ! coupling points on boundary
+    num_coupling_points = num_abs_boundary_faces * NGLLSQUARE
 
-           write(IOUT,'(6f25.10)') xstore_unique(iglob), ystore_unique(iglob), zstore_unique(iglob), nx, ny, nz
+    ! get local coupling points
+    allocate(coupling_points(7,num_coupling_points),stat=ier)
+    if (ier /= 0) stop 'Error allocating coupling points array'
+    coupling_points(:,:) = 0.0_CUSTOM_REAL
 
+    ipoin = 0
+    do iface = 1,num_abs_boundary_faces
+      ispec = abs_boundary_ispec(iface)
+      do igll = 1,NGLLSQUARE
+        ! gets local indices for GLL point
+        i = abs_boundary_ijk(1,igll,iface)
+        j = abs_boundary_ijk(2,igll,iface)
+        k = abs_boundary_ijk(3,igll,iface)
+
+        nx = abs_boundary_normal(1,igll,iface)
+        ny = abs_boundary_normal(2,igll,iface)
+        nz = abs_boundary_normal(3,igll,iface)
+
+        iglob = ibool(i,j,k,ispec)
+
+        x = xstore_unique(iglob)
+        y = ystore_unique(iglob)
+        z = zstore_unique(iglob)
+
+        ipoin = ipoin + 1
+
+        coupling_points(1,ipoin) = x
+        coupling_points(2,ipoin) = y
+        coupling_points(3,ipoin) = z
+        coupling_points(4,ipoin) = nx
+        coupling_points(5,ipoin) = ny
+        coupling_points(6,ipoin) = nz
+        coupling_points(7,ipoin) = real(iproc,kind=CUSTOM_REAL)
+      enddo
+    enddo
+    ! check
+    if (ipoin /= num_coupling_points) call exit_MPI(myrank,'Error counted number of coupling points is invalid')
+
+    ! get coupling points from each process
+    if (NPROC > 1) then
+      nb_points_per_proc(:) = 0
+      call gather_all_singlei(num_coupling_points,nb_points_per_proc,NPROC)
+    endif
+
+    ! total number of points
+    if (NPROC > 1) then
+      num_coupling_points_total = sum(nb_points_per_proc(:))
+    else
+      num_coupling_points_total = num_coupling_points
+    endif
+
+    ! main process saves all coupling points
+    if (myrank == 0) then
+      ! user output
+      write(IMAIN,*) '       total number of coupling points = ',num_coupling_points_total
+      call flush_IMAIN()
+
+      ! opens file
+      open(unit=IOUT,file=trim(filename),status='unknown',action='write',form='unformatted',iostat=ier)
+      if (ier /= 0) then
+        print *,'Error: could not open file ',trim(filename)
+        print *,'       Please check if path exists...'
+        stop 'Error opening database specfem_coupling_points.bin'
+      endif
+
+      ! total number of point records to follow
+      write(IOUT) num_coupling_points_total
+
+      ! start writing out coupling point from this slice
+      do ipoin = 1,num_coupling_points
+        ! format: #x #y #z #nx #ny #nz #iproc
+        write(IOUT) coupling_points(:,ipoin)
+      enddo
+    endif
+
+    ! write out coupling points from all other slices
+    if (NPROC > 1) then
+      ! main collects coupling points
+      if (myrank == 0) then
+        do iproc = 1,NPROC - 1
+          ! re-allocate coupling points
+          num_coupling_points = nb_points_per_proc(iproc)
+          if (num_coupling_points > 0) then
+            ! re-allocate array
+            deallocate(coupling_points)
+            allocate(coupling_points(7,num_coupling_points),stat=ier)
+            if (ier /= 0) stop 'Error allocating coupling points array for collecting'
+            coupling_points(:,:) = 0.0_CUSTOM_REAL
+
+            ! main collects
+            call recvv_cr(coupling_points,7*num_coupling_points,iproc,itag)
+
+            ! write out points
+            do ipoin = 1,num_coupling_points
+              ! format: #x #y #z #nx #ny #nz #iproc
+              write(IOUT) coupling_points(:,ipoin)
+            enddo
+          endif
         enddo
-     endif
-  enddo
-  close(IOUT)
+      else
+        ! secondary processes send to main
+        if (num_coupling_points > 0) then
+          call sendv_cr(coupling_points,7*num_coupling_points,0,itag)
+        endif
+      endif
+    endif
+
+    ! finish saving points
+    if (myrank == 0) then
+      ! closes file
+      close(IOUT)
+      ! user info
+      write(IMAIN,*) '       written to: ',trim(filename)
+      write(IMAIN,*)
+      call flush_IMAIN()
+    endif
+
+    ! free temporary array
+    deallocate(coupling_points)
+
+    ! all done
+    return
+
+  case default
+    ! default injection techniques DSM/AxiSEM/FK
+    ! stores boundary information into DATABASES_MPI/ directory
+    ! with a corresponding file (absorb_ds) for each process
+
+    ! stores boundary files
+    filename = prname(1:len_trim(prname))//'absorb_dsm'
+    open(IOUT,file=filename(1:len_trim(filename)),status='unknown',form='unformatted',iostat=ier)
+    if (ier /= 0) stop 'error opening file absorb_dsm'
+    write(IOUT) num_abs_boundary_faces
+    write(IOUT) abs_boundary_ispec
+    write(IOUT) abs_boundary_ijk
+    write(IOUT) abs_boundary_jacobian2Dw
+    write(IOUT) abs_boundary_normal
+    close(IOUT)
+
+    filename = prname(1:len_trim(prname))//'inner'
+    open(IOUT,file=filename(1:len_trim(filename)),status='unknown',form='unformatted',iostat=ier)
+    write(IOUT) ispec_is_inner
+    write(IOUT) ispec_is_elastic
+    close(IOUT)
+
+    ! write an ascii file for instaseis input
+    filename = prname(1:len_trim(prname))//'normal.txt'
+    open(IOUT,file=filename(1:len_trim(filename)),status='unknown',iostat=ier)
+    write(IOUT, *) ' number of points :', num_abs_boundary_faces*NGLLSQUARE
+
+    do iface = 1,num_abs_boundary_faces
+       ispec = abs_boundary_ispec(iface)
+       if (ispec_is_elastic(ispec)) then
+          do igll = 1,NGLLSQUARE
+
+             ! gets local indices for GLL point
+             i = abs_boundary_ijk(1,igll,iface)
+             j = abs_boundary_ijk(2,igll,iface)
+             k = abs_boundary_ijk(3,igll,iface)
+
+             iglob = ibool(i,j,k,ispec)
+
+             nx = abs_boundary_normal(1,igll,iface)
+             ny = abs_boundary_normal(2,igll,iface)
+             nz = abs_boundary_normal(3,igll,iface)
+
+             write(IOUT,'(6f25.10)') xstore_unique(iglob), ystore_unique(iglob), zstore_unique(iglob), nx, ny, nz
+
+          enddo
+       endif
+    enddo
+    close(IOUT)
+
+  end select
 
   end subroutine save_arrays_solver_injection_boundary

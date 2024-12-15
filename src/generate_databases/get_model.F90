@@ -41,8 +41,10 @@
   use create_regions_mesh_ext_par
 
   ! injection technique
-  use constants, only: INJECTION_TECHNIQUE_IS_FK,INJECTION_TECHNIQUE_IS_DSM,INJECTION_TECHNIQUE_IS_AXISEM
-  use shared_parameters, only: COUPLE_WITH_INJECTION_TECHNIQUE,MESH_A_CHUNK_OF_THE_EARTH,INJECTION_TECHNIQUE_TYPE
+  use constants, only: &
+    INJECTION_TECHNIQUE_IS_FK,INJECTION_TECHNIQUE_IS_DSM,INJECTION_TECHNIQUE_IS_AXISEM,INJECTION_TECHNIQUE_IS_SPECFEM
+  use shared_parameters, only: &
+    COUPLE_WITH_INJECTION_TECHNIQUE,MESH_A_CHUNK_OF_THE_EARTH,INJECTION_TECHNIQUE_TYPE
 
   implicit none
 
@@ -109,13 +111,17 @@
         write(IMAIN,*) '     INJECTION TECHNIQUE TYPE = ', INJECTION_TECHNIQUE_TYPE,' (AXISEM) '
       case (INJECTION_TECHNIQUE_IS_FK)
         write(IMAIN,*) '     INJECTION TECHNIQUE TYPE = ', INJECTION_TECHNIQUE_TYPE,' (FK) '
+      case (INJECTION_TECHNIQUE_IS_SPECFEM)
+        write(IMAIN,*) '     INJECTION TECHNIQUE TYPE = ', INJECTION_TECHNIQUE_TYPE,' (SPECFEM) '
       case default
-        stop 'Invalid INJECTION_TECHNIQUE_TYPE chosen, must be 1 == DSM, 2 == AXISEM or 3 == FK'
+        stop 'Invalid INJECTION_TECHNIQUE_TYPE chosen, must be 1 == DSM, 2 == AXISEM, 3 == FK or 4 == SPECFEM'
       end select
       write(IMAIN,*)
+      call flush_IMAIN()
     endif
 
-    if (INJECTION_TECHNIQUE_TYPE /= INJECTION_TECHNIQUE_IS_FK) then
+    if (INJECTION_TECHNIQUE_TYPE == INJECTION_TECHNIQUE_IS_DSM .or. &
+        INJECTION_TECHNIQUE_TYPE == INJECTION_TECHNIQUE_IS_AXISEM) then
       ! MESH_A_CHUNK_OF_THE_EARTH, DSM or AxiSEM
       if ((NGLLX == 5) .and. (NGLLY == 5) .and. (NGLLZ == 5)) then
         ! gets xyz coordinates of GLL point
@@ -125,7 +131,7 @@
         zmesh = zstore_unique(iglob)
         call model_coupled_FindLayer(xmesh,ymesh,zmesh)
       else
-        stop 'bad number of GLL points for coupling with an external code'
+        stop 'bad number of GLL points for coupling with an external code (DSM/AxiSEM)'
       endif
     endif
   endif
@@ -140,7 +146,9 @@
 
     ! coupling
     if (COUPLE_WITH_INJECTION_TECHNIQUE .or. MESH_A_CHUNK_OF_THE_EARTH) then
-      if (INJECTION_TECHNIQUE_TYPE /= INJECTION_TECHNIQUE_IS_FK) then
+      ! DSM/AxiSEM coupling
+      if (INJECTION_TECHNIQUE_TYPE == INJECTION_TECHNIQUE_IS_DSM .or. &
+          INJECTION_TECHNIQUE_TYPE == INJECTION_TECHNIQUE_IS_AXISEM) then
         iglob = ibool(3,3,3,ispec)
         xmesh = xstore_unique(iglob)
         ymesh = ystore_unique(iglob)
@@ -212,7 +220,9 @@
           !! VM VM for coupling with DSM
           !! find the layer in which the middle of the element is located
           if (COUPLE_WITH_INJECTION_TECHNIQUE .or. MESH_A_CHUNK_OF_THE_EARTH) then
-            if (INJECTION_TECHNIQUE_TYPE /= INJECTION_TECHNIQUE_IS_FK) then
+            ! DSM/AxiSEM coupling
+            if (INJECTION_TECHNIQUE_TYPE == INJECTION_TECHNIQUE_IS_DSM .or. &
+                INJECTION_TECHNIQUE_TYPE == INJECTION_TECHNIQUE_IS_AXISEM) then
               if (i == 3 .and. j == 3 .and. k == 3) call model_coupled_FindLayer(xmesh,ymesh,zmesh)
             endif
           endif
@@ -449,10 +459,10 @@
       if (mod(ispec,max(nspec/10,1)) == 0) then
         tCPU = wtime() - time_start
         ! remaining
-        tCPU = (10.0-ispec/(nspec/10.0))/ispec/(nspec/10.0)*tCPU
-        write(IMAIN,*) "    ",ispec/(max(nspec/10,1)) * 10," %", &
-                      " time remaining:", tCPU,"s"
-
+        !tCPU = (10.0-ispec/(nspec/10.0))/ispec/(nspec/10.0)*tCPU
+        !write(IMAIN,*) "    ",int(ispec/(max(nspec/10,1)) * 10)," %"," time remaining:",tCPU,"s"
+        ! elapsed
+        write(IMAIN,*) "    ",int(ispec/(max(nspec/10,1)) * 10)," %"," - elapsed time:",sngl(tCPU),"s"
         ! flushes file buffer for main output file (IMAIN)
         call flush_IMAIN()
       endif

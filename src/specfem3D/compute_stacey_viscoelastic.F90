@@ -512,7 +512,8 @@
   ! boundary coupling
   use shared_parameters, only: COUPLE_WITH_INJECTION_TECHNIQUE,INJECTION_TECHNIQUE_TYPE,RECIPROCITY_AND_KH_INTEGRAL
   use specfem_par_coupling, only: it_dsm, &
-    Veloc_dsm_boundary, Tract_dsm_boundary, Veloc_axisem, Tract_axisem, Tract_axisem_time
+    Veloc_dsm_boundary, Tract_dsm_boundary, Veloc_axisem, Tract_axisem, Tract_axisem_time, &
+    Veloc_specfem, Tract_specfem
   ! FK3D calculation
   use specfem_par_coupling, only: ipt_table, NP_RESAMP, Veloc_FK, Tract_FK
   ! boundary injection wavefield parts for saving together with b_absorb_field
@@ -534,13 +535,11 @@
   ! local parameters
   real(kind=CUSTOM_REAL) :: vx,vy,vz,nx,ny,nz,tx,ty,tz,vn,jacobianw
   integer :: ispec,iglob,i,j,k,iface,igll
-  ! added by Ping Tong (TP / Tong Ping) for the FK3D calculation
+  ! for the FK3D calculation
   ! FK surface
   integer :: ipt, ii, kk, iim1, iip1, iip2
   real(kind=CUSTOM_REAL) :: cs1,cs2,cs3,cs4,w
   real(kind=CUSTOM_REAL) :: vx_FK,vy_FK,vz_FK,tx_FK,ty_FK,tz_FK
-  !! CD modif. : begin (implemented by VM) !! For coupling with DSM
-  integer :: kaxisem
 
 !! comment from Vadim Monteiller, Feb 2017:
 
@@ -629,6 +628,10 @@
     !! CD CD add this
     if (RECIPROCITY_AND_KH_INTEGRAL) Tract_axisem_time(:,:,it) = Tract_axisem(:,:)
 
+  case (INJECTION_TECHNIQUE_IS_SPECFEM)
+    ! SPECFEM coupling
+    call read_specfem_file(Veloc_specfem,Tract_specfem,num_abs_boundary_faces*NGLLSQUARE)
+
   case (INJECTION_TECHNIQUE_IS_FK)
     ! FK coupling
     !! find indices
@@ -677,6 +680,7 @@
         ! velocity and stresses would be subtracted from total, therefore we add a minus sign when getting the values
         select case(INJECTION_TECHNIQUE_TYPE)
         case (INJECTION_TECHNIQUE_IS_DSM)                 !! To verify for NOBU version
+          ! DSM coupling
           ! velocity
           vx = - Veloc_dsm_boundary(1,it_dsm,igll,iface)
           vy = - Veloc_dsm_boundary(2,it_dsm,igll,iface)
@@ -685,16 +689,32 @@
           tx = - Tract_dsm_boundary(1,it_dsm,igll,iface)
           ty = - Tract_dsm_boundary(2,it_dsm,igll,iface)
           tz = - Tract_dsm_boundary(3,it_dsm,igll,iface)
-        case (INJECTION_TECHNIQUE_IS_AXISEM)              !! VM VM add AxiSEM
-          kaxisem = igll + NGLLSQUARE*(iface - 1)
+
+        case (INJECTION_TECHNIQUE_IS_AXISEM)
+          ! AxiSEM coupling
+          ipt = igll + NGLLSQUARE*(iface - 1)
           ! velocity
-          vx = - Veloc_axisem(1,kaxisem)
-          vy = - Veloc_axisem(2,kaxisem)
-          vz = - Veloc_axisem(3,kaxisem)
+          vx = - Veloc_axisem(1,ipt)
+          vy = - Veloc_axisem(2,ipt)
+          vz = - Veloc_axisem(3,ipt)
           ! stress
-          tx = - Tract_axisem(1,kaxisem)
-          ty = - Tract_axisem(2,kaxisem)
-          tz = - Tract_axisem(3,kaxisem)
+          tx = - Tract_axisem(1,ipt)
+          ty = - Tract_axisem(2,ipt)
+          tz = - Tract_axisem(3,ipt)
+
+        case (INJECTION_TECHNIQUE_IS_SPECFEM)
+          ! SPECFEM coupling
+          ! indexing (same as Axisem)
+          ipt = igll + NGLLSQUARE*(iface - 1)
+          ! velocity
+          vx = - Veloc_specfem(1,ipt)
+          vy = - Veloc_specfem(2,ipt)
+          vz = - Veloc_specfem(3,ipt)
+          ! stress
+          tx = - Tract_specfem(1,ipt)
+          ty = - Tract_specfem(2,ipt)
+          tz = - Tract_specfem(3,ipt)
+
         case (INJECTION_TECHNIQUE_IS_FK)
           ! added by Ping Tong (TP / Tong Ping) for the FK3D calculation
           ! point index using table lookup
@@ -801,4 +821,20 @@
   read(IIN_veloc_dsm) Veloc_axisem, Tract_axisem
 
   end subroutine read_axisem_file
+
+!=============================================================================
+
+  subroutine read_specfem_file(Veloc_specfem,Tract_specfem,nb)
+
+  use constants, only: CUSTOM_REAL,NDIM,IIN_veloc_dsm
+
+  implicit none
+
+  integer, intent(in) :: nb
+  real(kind=CUSTOM_REAL), intent(out) :: Veloc_specfem(NDIM,nb)
+  real(kind=CUSTOM_REAL), intent(out) :: Tract_specfem(NDIM,nb)
+
+  read(IIN_veloc_dsm) Veloc_specfem, Tract_specfem
+
+  end subroutine read_specfem_file
 

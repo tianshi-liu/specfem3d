@@ -395,11 +395,11 @@
 
     ! skip source info for wavefield injection simulations
     if (COUPLE_WITH_INJECTION_TECHNIQUE) then
-      write(IMAIN,*)
-      write(IMAIN,*) 'note on using injection technique:'
-      write(IMAIN,*) '  source (inside the mesh) will be ignored if we are coupling with DSM/AxiSEM/FK,'
+      write(IMAIN,*) 'using injection technique:'
+      write(IMAIN,*) '  source (inside the mesh) will be ignored if we are coupling with DSM/AxiSEM/FK/SPECFEM,'
       write(IMAIN,*) '  because the source is precisely the wavefield coming from the injection boundary'
       write(IMAIN,*)
+      call flush_IMAIN()
       ! nothing to display anymore
       is_done_sources = .true.
     endif
