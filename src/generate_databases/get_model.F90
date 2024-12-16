@@ -92,36 +92,41 @@
   end select
   call synchronize_all()
 
+  ! (optional) checks if additional VS30 layer model is provided in DATA/interface_vs30.dat file
+  ! and loads the Vs30 velocities to overimpose them at the top 30-m layer
+  call model_vs30_setup_check()
+
 ! DP: not sure if this here should check if (COUPLE_WITH_INJECTION_TECHNIQUE .or. MESH_A_CHUNK_OF_THE_EARTH) ..
   if (COUPLE_WITH_INJECTION_TECHNIQUE) then
-
+    ! safety stop
     if (INJECTION_TECHNIQUE_TYPE == INJECTION_TECHNIQUE_IS_FK .and. MESH_A_CHUNK_OF_THE_EARTH) &
       stop 'coupling with INJECTION_TECHNIQUE_IS_FK is incompatible with MESH_A_CHUNK_OF_THE_EARTH &
                       &because of Earth curvature not honored'
 
-    !! VM VM for coupling with DSM
-    !! find the layer in which the middle of the element is located
-    if (myrank == 0) then
-      write(IMAIN,*)
-      write(IMAIN,*) '     USING A HYBRID METHOD (THE CODE IS COUPLED WITH AN INJECTION TECHNIQUE):'
-      select case(INJECTION_TECHNIQUE_TYPE)
-      case (INJECTION_TECHNIQUE_IS_DSM)
-        write(IMAIN,*) '     INJECTION TECHNIQUE TYPE = ', INJECTION_TECHNIQUE_TYPE,' (DSM) '
-      case (INJECTION_TECHNIQUE_IS_AXISEM)
-        write(IMAIN,*) '     INJECTION TECHNIQUE TYPE = ', INJECTION_TECHNIQUE_TYPE,' (AXISEM) '
-      case (INJECTION_TECHNIQUE_IS_FK)
-        write(IMAIN,*) '     INJECTION TECHNIQUE TYPE = ', INJECTION_TECHNIQUE_TYPE,' (FK) '
-      case (INJECTION_TECHNIQUE_IS_SPECFEM)
-        write(IMAIN,*) '     INJECTION TECHNIQUE TYPE = ', INJECTION_TECHNIQUE_TYPE,' (SPECFEM) '
-      case default
-        stop 'Invalid INJECTION_TECHNIQUE_TYPE chosen, must be 1 == DSM, 2 == AXISEM, 3 == FK or 4 == SPECFEM'
-      end select
-      write(IMAIN,*)
-      call flush_IMAIN()
-    endif
-
+    ! DSM/AxiSEM coupling model
     if (INJECTION_TECHNIQUE_TYPE == INJECTION_TECHNIQUE_IS_DSM .or. &
         INJECTION_TECHNIQUE_TYPE == INJECTION_TECHNIQUE_IS_AXISEM) then
+      ! for coupling with DSM
+      ! find the layer in which the middle of the element is located
+      if (myrank == 0) then
+        write(IMAIN,*)
+        write(IMAIN,*) '     USING A HYBRID METHOD (THE CODE IS COUPLED WITH AN INJECTION TECHNIQUE):'
+        select case(INJECTION_TECHNIQUE_TYPE)
+        case (INJECTION_TECHNIQUE_IS_DSM)
+          write(IMAIN,*) '     INJECTION TECHNIQUE TYPE = ', INJECTION_TECHNIQUE_TYPE,' (DSM) '
+        case (INJECTION_TECHNIQUE_IS_AXISEM)
+          write(IMAIN,*) '     INJECTION TECHNIQUE TYPE = ', INJECTION_TECHNIQUE_TYPE,' (AXISEM) '
+        case (INJECTION_TECHNIQUE_IS_FK)
+          write(IMAIN,*) '     INJECTION TECHNIQUE TYPE = ', INJECTION_TECHNIQUE_TYPE,' (FK) '
+        case (INJECTION_TECHNIQUE_IS_SPECFEM)
+          write(IMAIN,*) '     INJECTION TECHNIQUE TYPE = ', INJECTION_TECHNIQUE_TYPE,' (SPECFEM) '
+        case default
+          stop 'Invalid INJECTION_TECHNIQUE_TYPE chosen, must be 1 == DSM, 2 == AXISEM, 3 == FK or 4 == SPECFEM'
+        end select
+        write(IMAIN,*)
+        call flush_IMAIN()
+      endif
+
       ! MESH_A_CHUNK_OF_THE_EARTH, DSM or AxiSEM
       if ((NGLLX == 5) .and. (NGLLY == 5) .and. (NGLLZ == 5)) then
         ! gets xyz coordinates of GLL point
@@ -135,6 +140,7 @@
       endif
     endif
   endif
+
   call synchronize_all()
 
   ! get MPI starting time
@@ -759,6 +765,9 @@
     endif
   endif
   ! *********************************************************************************
+
+  ! Vs30 model interface at top
+  if (USE_MODEL_LAYER_VS30) call model_vs30(xmesh,ymesh,zmesh,rho,vp,vs,idomain_id)
 
   ! for pure acoustic simulations (a way of avoiding re-mesh, re-partition etc.)
   ! can be used to compare elastic & acoustic reflections in exploration seismology

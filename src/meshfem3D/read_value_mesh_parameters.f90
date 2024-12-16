@@ -560,25 +560,25 @@
       stop 'Error while reading parameter file Mesh_Par_file'
     endif
 
-! suppress leading white spaces, if any
+    ! suppress leading white spaces, if any
     string_read = adjustl(string_read)
 
-! suppress trailing carriage return (ASCII code 13) if any (e.g. if input text file coming from Windows/DOS)
+    ! suppress trailing carriage return (ASCII code 13) if any (e.g. if input text file coming from Windows/DOS)
     if (index(string_read,achar(13)) > 0) string_read = string_read(1:index(string_read,achar(13))-1)
 
-! exit loop when we find the first line that is not a comment or a white line
+    ! exit loop when we find the first line that is not a comment or a white line
     if (len_trim(string_read) == 0) cycle
     if (string_read(1:1) /= '#') exit
   enddo
 
-! suppress trailing white spaces, if any
+  ! suppress trailing white spaces, if any
   string_read = string_read(1:len_trim(string_read))
 
-! suppress trailing comments, if any
+  ! suppress trailing comments, if any
   if (index(string_read,'#') > 0) string_read = string_read(1:index(string_read,'#')-1)
 
   if (suppress_junk) then
-! suppress leading junk (up to the first equal sign, included)
+    ! suppress leading junk (up to the first equal sign, included)
     index_equal_sign = index(string_read,'=')
     if (index_equal_sign <= 1 .or. index_equal_sign == len_trim(string_read)) then
       print *,'Error reading Mesh_Par_file line: ',trim(string_read)
@@ -588,7 +588,7 @@
     endif
   endif
 
-! suppress leading and trailing white spaces again, if any, after having suppressed the leading junk
+  ! suppress leading and trailing white spaces again, if any, after having suppressed the leading junk
   string_read = adjustl(string_read)
   string_read = string_read(1:len_trim(string_read))
 

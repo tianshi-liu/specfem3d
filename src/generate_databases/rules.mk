@@ -68,6 +68,7 @@ generate_databases_OBJECTS = \
 	$O/model_gll.gen.o \
 	$O/model_salton_trough.gen.o \
 	$O/model_tomography.gen.o \
+	$O/model_vs30.gen.o \
 	$O/pml_set_local_dampingcoeff.gen.o \
 	$O/read_parameters.gen.o \
 	$O/read_partition_files.gen.o \
