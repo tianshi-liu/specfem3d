@@ -319,7 +319,7 @@ contains
 
   ! get interface value
   SUPPRESS_UTM_PROJECTION_COPY = SUPPRESS_UTM_PROJECTION
-  
+
   ! project x and y in UTM back to long/lat since interface file is in long/lat
   SUPPRESS_UTM_PROJECTION = SUPPRESS_UTM_PROJECTION_VS30
   call utm_geo(long,lat,x,y,IUTM2LONGLAT)

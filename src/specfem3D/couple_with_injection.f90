@@ -2249,7 +2249,7 @@
 !
 ! similar as in routine locate_receivers()
 
-  use constants, only: HUGEVAL,CUSTOM_REAL,MAX_STRING_LEN,IMAIN,NDIM,NGLLX,NGLLY,NGLLZ
+  use constants, only: HUGEVAL,CUSTOM_REAL,IMAIN,NDIM
 
   use specfem_par, only: ibool,myrank,NSPEC_AB,NGLOB_AB,NPROC, &
     xstore,ystore,zstore
@@ -2562,7 +2562,7 @@
 
 ! pre-computes arrays for coupling points in this slice
 
-  use constants, only: myrank,CUSTOM_REAL,MAX_STRING_LEN,IMAIN,NDIM,NGLLX,NGLLY,NGLLZ
+  use constants, only: myrank,CUSTOM_REAL,MAX_STRING_LEN,NDIM,NGLLX,NGLLY,NGLLZ
 
   use specfem_par, only: xigll,yigll,zigll
 
