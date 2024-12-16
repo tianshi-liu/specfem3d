@@ -107,7 +107,11 @@ def extract_region(lon_min,lat_min,lon_max,lat_max):
     # for example: region = (12.35, 41.8, 12.65, 42.0)
     region = (lon_min, lat_min, lon_max, lat_max)
 
+    print("*******************************")
     print("extracting region: ",region)
+    print("*******************************")
+    print("")
+
 
     ## gmt
     # region format: e.g. -R123.0/132.0/31.0/40.0
@@ -153,6 +157,83 @@ def extract_region(lon_min,lat_min,lon_max,lat_max):
     check_status(status)
     print("")
 
+    # map
+    plot_map(gmt_region,gridfile=gridfile)
+
+
+def plot_map(gmt_region,gridfile="region_vs30.grd"):
+    global datadir
+
+    print("*******************************")
+    print("plotting map ...")
+    print("*******************************")
+
+    # current directory
+    dir = os.getcwd()
+    print("  current directory:",dir)
+    print("")
+
+    #cmd = 'cd ' + datadir + '/' + ';'
+    #status = subprocess.call(cmd, shell=True)
+    #check_status(status)
+
+    ps_file = "map.ps"
+    pdf_file = "map.pdf"
+
+    # when plotting, add a topography overlay for orientation
+    topofile = 'ptopo.grd'
+    # srtm 30s (30-arc seconds) ~ 1km resolution
+    cmd = 'gmt grdcut @earth_relief_30s ' + gmt_region + ' -G' + topofile + ';'
+    # gradient
+    cmd += 'gmt grdgradient ' + topofile + ' -Nt1 -A45 -Gptopogradient.grd -V' + ';'
+    print("  > ",cmd)
+    status = subprocess.call(cmd, shell=True)
+    check_status(status)
+
+    # gmt plotting
+    cmd = 'gmt pscoast ' + gmt_region + ' -JM6i -Dh -G220 -P -K > ' + ps_file + ';'
+
+    # topography shading
+    #makecpt -Cgray -T0/1/0.01 > topo.cpt
+    #cmd += 'makecpt -Cglobe -T-2500/2500/100 > topo.cpt' + ';'
+    #cmd += 'makecpt -Cterra -T-2500/2500/100 > ptopo.cpt' + ';'
+    #cmd += 'makecpt -Ctopo -T-2500/2500/100 > ptopo.cpt' + ';'
+    #cmd += 'gmt makecpt -Crelief -T-2500/2500/100 > ptopo.cpt' + ';'
+    cmd += 'gmt makecpt -Cgray -T-2500/2500/100 > ptopo.cpt' + ';'
+
+    # seismic values
+    cmd += 'gmt makecpt -Cseis -T0/2200/100 > pseis.cpt' + ';'
+
+    # w/ topogradient
+    cmd += 'gmt grdimage ' + gridfile + ' -Iptopogradient.grd -J -R -Cpseis.cpt -V -O -K >> ' + ps_file + ';'
+
+    # only vs image
+    #cmd += 'gmt grdimage ' + gridfile + ' -J -R -Cpseis.cpt -V -O -K >> ' + ps_file + ';'
+
+    # the topography grid
+    #cmd += 'gmt grdimage ' + topofile + ' -Iptopogradient.grd -J -R -Cptopo.cpt -V -O -K >> ' + ps_file + ';'
+
+    # coast lines
+    cmd += 'gmt pscoast -R -J -Di -N1/1.5p,gray40 -A1000 -W1 -O -K >> ' + ps_file + ';'
+
+    # add a colorbar with legend
+    cmd += 'gmt psscale -Dx0.5i/-0.5i+w5i/0.2i+h+e -Cpseis.cpt -Bx500+l"Vs30" -By+l"m/s" -O -K >> ' + ps_file + ';'
+
+    cmd += 'gmt psbasemap -O -R -J -Ba1g1:"Map": -P -V  >> ' + ps_file + ';'
+
+    status = subprocess.call(cmd, shell=True)
+    check_status(status)
+    print("  map plotted in file: ",ps_file)
+
+    # imagemagick converts ps to pdf
+    cmd = 'convert ' + ps_file + ' ' + pdf_file
+    print("  > ",cmd)
+    status = subprocess.call(cmd, shell=True)
+    check_status(status)
+    print("  map plotted in file: ",pdf_file)
+    print("")
+    return
+
 
 def create_interface_file():
     """
@@ -164,7 +245,9 @@ def create_interface_file():
     xyz_file = 'region_vs30.xyz'
 
     # reads in lon/lat/elevation
+    print("*******************************")
     print("creating interface:")
+    print("*******************************")
     print("  reading file " + xyz_file + " ...")
     print("")
 
