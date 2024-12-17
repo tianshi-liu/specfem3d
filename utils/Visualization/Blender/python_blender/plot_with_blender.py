@@ -1514,7 +1514,7 @@ def set_scene() -> None:
         scene.render.engine = 'CYCLES'
 
         ## adjust settings for faster rendering w/ cycles
-        #scene.cycles.device = 'GPU'
+        #scene.cycles.device = 'GPU'          # GPU rendering
         # Set tile size
         scene.cycles.tile_size = 512 # 256
         # Lower the number of samples
@@ -1832,6 +1832,29 @@ def render_image() -> None:
 
     # gets scene
     scene = bpy.context.scene
+
+    # get render settings
+    render = scene.render
+
+    ## GPU rendering
+    # note: some of these settings either won't work or are only available for Cycle engine
+    #       either way, it seems they slow down the rendering and the default installation is fine for now...
+    #
+    #scene.render.device = 'GPU'            # doesn't work w/ Blender v3.6
+    #scene.render.engine = 'BLENDER_EEVEE'  # uses by default installation the OpenGL/GPU; no further GPU settings for Eevee
+    #
+    # for cycles - turning this on seems to slow down the rendering (?)
+    #scene.render.engine = 'CYCLES'
+    #scene.cycles.device = 'GPU'
+    # configure GPU devices (optional, adjust based on your setup)
+    #bpy.context.preferences.addons["cycles"].preferences.compute_device_type = 'METAL'  # 'CUDA' or 'METAL' for Apple Silicon
+    #bpy.context.scene.cycles.device_type = 'GPU'
+    # info - get_devices() to let Blender detects GPU device
+    #bpy.context.preferences.addons["cycles"].preferences.get_devices()
+    #print("Cycles compute device : ",bpy.context.preferences.addons["cycles"].preferences.compute_device_type)
+    #for device in bpy.context.preferences.addons["cycles"].preferences.devices:
+    #    device["use"] = 1 # Using all devices, include GPU and CPU
+    #    print("device: ",device["name"]," - use: ",device["use"])
 
     # output image
     scene.render.image_settings.file_format = 'JPEG'   # 'PNG'

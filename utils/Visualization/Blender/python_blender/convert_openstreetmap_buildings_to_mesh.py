@@ -99,7 +99,7 @@ roof_level_height = 1.5   # m
 
 ## globals
 transformer_to_utm = None
-
+utm_zone = None
 
 
 def download_buildings(mesh_area: np.array):
@@ -642,7 +642,31 @@ def convert_coordinates_to_UTM(gdf, mesh_area: np.array, lons, lats):
         utm_code = utm_crs_list[0].code
         utm_epsg = "EPSG:{}".format(utm_code)
 
-        print("  UTM code:", utm_code," epsg: ", utm_epsg)
+        # convert code to integer number and determine UTM zone number for info
+        utm_code = int(utm_code)
+        hemisphere_auto = 'N' if utm_code < 32700 else 'S'
+        utm_zone_auto = utm_code - 32600 if hemisphere_auto == 'N' else utm_code - 32700
+
+        print("  detected UTM code: ",utm_code," epsg: ", utm_epsg)
+        print("           UTM zone: {}{}".format(utm_zone_auto,hemisphere_auto))
+        print("")
+
+        # user specified UTM zone
+        if not utm_zone == None:
+            # Determine the hemisphere based on the zone number based on zone number 1 - 120
+            #hemisphere = 'N' if utm_zone <= 60 else 'S'
+            #utm_zone = utm_zone % 60  # Normalize zone number to 1-60
+
+            # here, we will use 1-60 as input for UTM zones, positive for Northern and negative numbers for Southern hemisphere
+            hemisphere = 'N' if utm_zone > 0 else 'S'
+
+            # Construct the EPSG code
+            utm_code = 32600 + abs(utm_zone) if hemisphere == 'N' else 32700 + abs(utm_zone)
+            utm_epsg = "EPSG:{}".format(utm_code)
+
+            print("  user specified UTM zone: ",utm_zone)
+            print("                 UTM code: ",utm_code," epsg: ", utm_epsg)
+            print("")
 
         # transformer
         # transformation from WGS84 to UTM zone
@@ -1881,10 +1905,11 @@ def convert_openstreetmap_buildings(input_file: str="", mesh_area: np.array=None
 #
 
 def usage() -> None:
-    print("usage: ./convert_openstreetmap_buildings_to_dxf.py [--mesh_area=(lon_min,lat_min,lon_max,lat_max)] [--GeoJSON_file=file]")
+    print("usage: ./convert_openstreetmap_buildings_to_dxf.py [--mesh_area=(lon_min,lat_min,lon_max,lat_max)] [--GeoJSON_file=file] [--utm_zone=ZoneNumber]")
     print("  with")
     print("     --mesh_area             - downloads/limits buildings for area specified by (lon_min,lat_min,lon_max,lat_max)")
     print("     --GeoJSON_file          - use input mesh file (.gjson) instead of download")
+    print("     --utm_zone              - use specified UTM zone number (1-60) with (+) for Northern (-) for Southern hemisphere (e.g., -58)")
     sys.exit(1)
 
 
@@ -1909,7 +1934,13 @@ if __name__ == '__main__':
             mesh_area = np.array([float(val) for val in str_array.strip('()[]').split(',')])
         elif "--GeoJSON_file=" in arg:
             input_file = arg.split('=')[1]
-        elif i >= 2:
+        elif "--utm_zone=" in arg:
+            str_val = arg.split('=')[1]
+            utm_zone = int(str_val)
+            if abs(utm_zone) < 1 or utm_zone > 60:
+                print(f"Invalid UTM zone entered: {utm_zone} - Please use zones from +/- [1,60]")
+                sys.exit(1)
+        elif i >= 3:
             print("argument not recognized: ",arg)
 
     # logging

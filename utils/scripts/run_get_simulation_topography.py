@@ -998,6 +998,7 @@ def geo2utm(lon,lat,zone):
     convert geodetic longitude and latitude to UTM, and back
     use iway = ILONGLAT2UTM for long/lat to UTM, IUTM2LONGLAT for UTM to lat/long
     a list of UTM zones of the world is available at www.dmap.co.uk/utmworld.htm
+    Use zones +1 to +60 for the Northern hemisphere, -1 to -60 for the Southern hemisphere
 
     implicit none
 
@@ -1091,17 +1092,22 @@ def geo2utm(lon,lat,zone):
     e6 = e2 * e4
     ep2 = e2/(1.0 - e2)
 
+    #----- Set Zone parameters
+
+    lsouth = False
+    if UTM_PROJECTION_ZONE < 0: lsouth = True
+
+    zone = abs(UTM_PROJECTION_ZONE)
+    cm = zone * 6.0 - 183.0       # set central meridian for this zone
+    cmr = cm*degrad
+
     if iway == IUTM2LONGLAT:
         xx = rx
         yy = ry
+        if lsouth: yy = yy - 1.e7
     else:
         dlon = rlon
         dlat = rlat
-
-    #----- Set Zone parameters
-    zone = UTM_PROJECTION_ZONE
-    cm = zone * 6.0 - 183.0       # set central meridian for this zone
-    cmr = cm*degrad
 
     #---- Lat/Lon to UTM conversion
     if iway == ILONGLAT2UTM:
@@ -1205,6 +1211,7 @@ def geo2utm(lon,lat,zone):
 
     else:
         rx = xx
+        if lsouth: yy = yy + 1.e7
         ry = yy
         rlon = rlon_save
         rlat = rlat_save
@@ -1223,7 +1230,7 @@ def convert_lonlat2utm(file_in,zone,file_out):
     print("  zone: %i " % zone)
 
     # checks argument
-    if zone < 1 or zone > 60:  sys.exit("error zone: zone not UTM zone")
+    if abs(zone) < 1 or abs(zone) > 60:  sys.exit("error zone: zone not UTM zone")
 
     # grab all the locations in file
     with open(file_in,'r') as f:
@@ -1321,10 +1328,20 @@ def setup_simulation(lon_min,lat_min,lon_max,lat_max):
     midpoint_lat = (lat_min + lat_max)/2.0
     midpoint_lon = (lon_min + lon_max)/2.0
 
+    utm_zone_letter = utm.latitude_to_zone_letter(midpoint_lat)  # zone letters: XWVUTSRQPN north, MLKJHGFEDC south
+    hemisphere = 'N' if utm_zone_letter in "XWVUTSRQPN" else 'S'
+
     utm_zone = utm.latlon_to_zone_number(midpoint_lat,midpoint_lon)
     print("  region midpoint lat/lon: %f / %f " %(midpoint_lat,midpoint_lon))
-    print("  UTM zone: %d" % utm_zone)
+    print("  UTM zone: {}{}".format(utm_zone,hemisphere))
     print("")
+
+    # SPECFEM uses positive (+) zone numbers for Northern, negative (-) zone numbers for Southern hemisphere
+    if hemisphere == 'S':
+        utm_zone = - utm_zone
+        print("  Southern hemisphere")
+        print("  using negative zone number: {} (for SPECFEM format)".format(utm_zone))
+        print("")
 
     # converting to utm
     utm_file = 'ptopo.utm'
