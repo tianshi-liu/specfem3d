@@ -89,10 +89,12 @@ my_kernel_test(){
 cd $dir
 
 # default setup
-# limit time steps for testing
-sed -i "s:^NSTEP .*:NSTEP    = 200:" DATA/Par_file
-# shortens output interval to avoid timeouts
-sed -i "s:^NTSTEP_BETWEEN_OUTPUT_INFO .*:NTSTEP_BETWEEN_OUTPUT_INFO    = 100:" DATA/Par_file
+if [ -e DATA/Par_file ]; then
+  # limit time steps for testing
+  sed -i "s:^NSTEP .*:NSTEP    = 200:" DATA/Par_file
+  # shortens output interval to avoid timeouts
+  sed -i "s:^NTSTEP_BETWEEN_OUTPUT_INFO .*:NTSTEP_BETWEEN_OUTPUT_INFO    = 100:" DATA/Par_file
+fi
 
 # limit time steps for specific examples
 # simple mesh example
