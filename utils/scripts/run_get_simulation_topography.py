@@ -1079,7 +1079,6 @@ def geo2utm(lon,lat,zone):
 
     #---------------------------------------------------------------
 
-
     # save original parameters
     rlon_save = rlon
     rlat_save = rlat
@@ -1093,11 +1092,11 @@ def geo2utm(lon,lat,zone):
     ep2 = e2/(1.0 - e2)
 
     #----- Set Zone parameters
-
+    # zone
     lsouth = False
     if UTM_PROJECTION_ZONE < 0: lsouth = True
-
     zone = abs(UTM_PROJECTION_ZONE)
+
     cm = zone * 6.0 - 183.0       # set central meridian for this zone
     cmr = cm*degrad
 

@@ -298,17 +298,22 @@ def geo2utm(lon,lat,zone):
     e6 = e2 * e4
     ep2 = e2/(1.0 - e2)
 
+    #----- Set Zone parameters
+    # zone
+    lsouth = False
+    if UTM_PROJECTION_ZONE < 0: lsouth = True
+    zone = abs(UTM_PROJECTION_ZONE)
+
+    cm = zone * 6.0 - 183.0       # set central meridian for this zone
+    cmr = cm*degrad
+
     if iway == IUTM2LONGLAT:
         xx = rx
         yy = ry
+        if lsouth: yy = yy - 1.e7
     else:
         dlon = rlon
         dlat = rlat
-
-    #----- Set Zone parameters
-    zone = UTM_PROJECTION_ZONE
-    cm = zone * 6.0 - 183.0       # set central meridian for this zone
-    cmr = cm*degrad
 
     #---- Lat/Lon to UTM conversion
     if iway == ILONGLAT2UTM:
@@ -412,6 +417,7 @@ def geo2utm(lon,lat,zone):
 
     else:
         rx = xx
+        if lsouth: yy = yy + 1.e7
         ry = yy
         rlon = rlon_save
         rlat = rlat_save
