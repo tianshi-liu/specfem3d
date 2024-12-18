@@ -141,6 +141,14 @@ fi
 if [ "$TESTDIR" == "EXAMPLES/applications/small_example_coupling_FK_specfem/" ]; then
   sed -i "s:^NSTEP .*:NSTEP    = 1000:" DATA/Par_file
 fi
+# coupling SPECFEM
+if [ "$TESTDIR" == "EXAMPLES/applications/small_example_coupling_SPECFEM_specfem/" ]; then
+  # turning off mesh output to avoid using too much memory on the test nodes
+  sed -i "s:^SAVE_MESH_FILES .*:SAVE_MESH_FILES    = .false.:" DATA.coarse/Par_file
+  sed -i "s:^SAVE_MESH_FILES .*:SAVE_MESH_FILES    = .false.:" DATA.local/Par_file
+  sed -i "s:^CREATE_VTK_FILES .*:CREATE_VTK_FILES    = .false.:" DATA.coarse/meshfem3D_files/Mesh_Par_file
+  sed -i "s:^CREATE_VTK_FILES .*:CREATE_VTK_FILES    = .false.:" DATA.local/meshfem3D_files/Mesh_Par_file
+fi
 # elastic halfspace, no absorbing
 if [ "$TESTDIR" == "EXAMPLES/applications/homogeneous_halfspace_HEX8_elastic_no_absorbing/" ]; then
   sed -i "s:^NSTEP .*:NSTEP    = 600:" DATA/Par_file
@@ -191,7 +199,9 @@ if [ "${GPU}" == "true" ]; then
 fi
 
 # save Par_file state
-cp -v DATA/Par_file DATA/Par_file.bak
+if [ -e DATA/Par_file ]; then
+  cp -v DATA/Par_file DATA/Par_file.bak
+fi
 
 # use kernel script
 if [ "${RUN_KERNEL}" == "true" ]; then
@@ -251,7 +261,9 @@ if [ "${RUN_KERNEL}" == "true" ]; then
 fi
 
 # restore original Par_file
-cp -v DATA/Par_file.bak DATA/Par_file
+if [ -e DATA/Par_file.bak ]; then
+  cp -v DATA/Par_file.bak DATA/Par_file
+fi
 
 # cleanup
 rm -rf OUTPUT_FILES/
