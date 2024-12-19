@@ -144,9 +144,9 @@ fi
 # coupling SPECFEM
 if [ "$TESTDIR" == "EXAMPLES/applications/small_example_coupling_SPECFEM_specfem/" ]; then
   # turning off mesh output to avoid using too much memory on the test nodes
-  sed -i "s:^SAVE_MESH_FILES .*:SAVE_MESH_FILES    = .false.:" DATA.coarse/Par_file
+  sed -i "s:^SAVE_MESH_FILES .*:SAVE_MESH_FILES    = .false.:" DATA.regional/Par_file
   sed -i "s:^SAVE_MESH_FILES .*:SAVE_MESH_FILES    = .false.:" DATA.local/Par_file
-  sed -i "s:^CREATE_VTK_FILES .*:CREATE_VTK_FILES    = .false.:" DATA.coarse/meshfem3D_files/Mesh_Par_file
+  sed -i "s:^CREATE_VTK_FILES .*:CREATE_VTK_FILES    = .false.:" DATA.regional/meshfem3D_files/Mesh_Par_file
   sed -i "s:^CREATE_VTK_FILES .*:CREATE_VTK_FILES    = .false.:" DATA.local/meshfem3D_files/Mesh_Par_file
 fi
 # elastic halfspace, no absorbing

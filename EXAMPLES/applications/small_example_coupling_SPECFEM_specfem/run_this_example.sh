@@ -33,17 +33,17 @@ rm -rf DATABASES_MPI.local
 mv -v DATABASES_MPI DATABASES_MPI.local
 
 ##
-## Step 2 - create wavefield solution from coarse simulation
+## Step 2 - create wavefield solution from coarse regional simulation
 ##
 echo
 echo "##############################################"
-echo "STEP 2 - coarse simulation"
+echo "STEP 2 - regional simulation"
 echo "##############################################"
 echo
 
 # symbolic link
 rm -f DATA
-ln -s DATA.coarse/ DATA
+ln -s DATA.regional/ DATA
 
 # mesher
 ./run_mesher.sh
@@ -56,11 +56,11 @@ if [[ $? -ne 0 ]]; then exit 1; fi
 if [[ $? -ne 0 ]]; then exit 1; fi
 
 # backup
-rm -rf OUTPUT_FILES.coarse
-mv -v OUTPUT_FILES OUTPUT_FILES.coarse
+rm -rf OUTPUT_FILES.regional
+mv -v OUTPUT_FILES OUTPUT_FILES.regional
 
-rm -rf DATABASES_MPI.coarse
-mv -v DATABASES_MPI DATABASES_MPI.coarse
+rm -rf DATABASES_MPI.regional
+mv -v DATABASES_MPI DATABASES_MPI.regional
 
 ##
 ## Step 3 - run coupled small-scale local simulation

@@ -1,7 +1,7 @@
 # Couple with injection - example of hybrid method run Specfem/Specfem
 
 This is a very small example to test the coupling between SPECFEM3D and itself.
-In other words, it runs a coarse simulation to create an initial wavefield for a distant event,
+In other words, it runs a coarse regional simulation to create an initial wavefield for a distant event,
 and then re-injects that wavefield at the coupling boundaries of a small-scale local simulation.
 
 
@@ -11,7 +11,7 @@ This coupling example uses the following steps:
 1. create the coupling boundary points of the small-scale local mesh by running the mesher
    with the small-scale local setup in folder `DATA.local/`
 
-2. run the coarse simulation using DATA.coarse/ to store the wavefield at the boundary points
+2. run the coarse regional simulation using DATA.regional/ to store the wavefield at the boundary points
    into a separate folder `COUPLING_FILES/`
 
 3. run the small-scale local simulation with injecting the wavefield at the boundary points
@@ -26,16 +26,16 @@ To launch the full coupling example with the above 3 steps, type:
 
 ## Notes
 
-* The coupling example here between coarse and small-scale mesh uses a flat top surface.
-  This allows the coarse simulation to locate all coupling points at the exact locations.
+* The coupling example here between coarse regional and small-scale local mesh uses a flat top surface.
+  This allows the coarse regional simulation to locate all coupling points at the exact locations.
   The resulting seismograms for stations inside the small-scale region should therefore become (almost) identical.
 
   You can compare the seismograms in the output folder `OUTPUT_FILES/` from the small-scale local simulation, with the
-  seismograms in `OUTPUT_FILES.coarse/` from the coarse simulation.
+  seismograms in `OUTPUT_FILES.regional/` from the coarse regional simulation.
 
-* In case coarse and small-scale simulation would use realistic topographic interfaces, there might be a difference
+* In case coarse regional and small-scale local simulation would use realistic topographic interfaces, there might be a difference
   in topography resolution and thus coupling points from the small-scale coupling boundary could be located slightly
-  outside the coarser mesh. Locating those coupling points would move them closer to the nearest coarse mesh elements.
+  outside the coarser regional mesh. Locating those coupling points would move them closer to the nearest coarse mesh elements.
   Storing the wavefield and re-injecting it would then lead to smaller artefacts.
 
   To work-around this, one would have to make sure that the top of the small-scale mesh surfaces match exactly
@@ -44,13 +44,13 @@ To launch the full coupling example with the above 3 steps, type:
   For "smoother" incoming wavefields and small discrepencies between surface points, the injected wavefield however
   might still be good enough.
 
-* To save storage space, we use `NTSTEP_BETWEEN_OUTPUT_SAMPLE == 2` in the `Par_file` of the coarse simulation.
+* To save storage space, we use `NTSTEP_BETWEEN_OUTPUT_SAMPLE == 2` in the `Par_file` of the coarse regional simulation.
   This seems to provide enough time samplings for the injection. One would have to test this out a bit for other examples.
   In general, the storage of the wavefield components (velocity & traction) over all coupling boundary points and over all time steps
   can lead to significant file sizes.
 
   In any case, the stored wavefield will be (time) interpolated during the preparation stage of the small-scale local simulation,
-  as the time steps `DT` of the coarse and small-scale simulations are likely different. Time interpolation is done by a
+  as the time steps `DT` of the coarse regional and small-scale local simulations are likely different. Time interpolation is done by a
   Catmull-Rom scheme that provides cubic interpolation between time samples. This scheme seems to exhibit a good balance between accuracy
   and speed for these kind of simulations. Thus, storing the wavefield at lower sampling rates can be fine for many applications.
 
@@ -67,7 +67,7 @@ to see what requirements they have.
   You can use the script in `utils/scripts/run_get_simulation_topography.py` to download and setup the topography surface
   (including one "downshifted" surface to optimize the mesh with the in-house mesher).
 
-  For example, to download a 3-arc seconds topography for the specified coarse region, you would type:
+  For example, to download a 3-arc seconds topography for the specified coarse regional region, you would type:
   ```
   ./run_get_simulation_topography.py 7.2 47.5 8.6 48.5 --SRTM=topo3 --toposhift=10000.0 --toposcale=0.0
   ```
@@ -100,7 +100,7 @@ to see what requirements they have.
   ```
   ./run_convert_IRIS_EMC_netCDF_2_tomo.py --EMC_file=IRIS_EMC/LSP-Eucrust1.0.nc --mesh_area=7.2,47.5,8.6,48.5 --maximum_depth=80.0
   ```
-  using the area and depth of the coarse mesh used above. This script will create the needed `tomography_model.xyz` file, which you
+  using the area and depth of the coarse regional mesh used above. This script will create the needed `tomography_model.xyz` file, which you
   can for example copy into a `DATA/tomo_files/` folder.
 
   Once you have a tomography file, you would adjust the `TOMOGRAPHY_PATH` parameter in `DATA/Par_file`, as well

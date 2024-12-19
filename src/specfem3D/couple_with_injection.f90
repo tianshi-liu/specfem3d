@@ -3153,7 +3153,7 @@ contains
   open(unit=IIN,file=trim(filename),status='old',action='read',form='unformatted',iostat=ier)
   if (ier /= 0) then
     print *,'Error: could not open file ',trim(filename)
-    print *,'       Please check if file exists and was computed with a previous (coarse) forward simulation...'
+    print *,'       Please check if file exists and was computed with a previous (coarse) regional forward simulation...'
     stop 'Error opening specfem_coupling_solution.bin'
   endif
 
@@ -3190,6 +3190,9 @@ contains
     write(IMAIN,*)
     ! estimates array memory tmp_veloc_points_timeseries & tmp_traction_points_timeseries
     sizeval = 2.d0 * dble(NDIM) * dble(maxval(nb_points_local_per_proc)) * dble(ntimesteps) * dble(CUSTOM_REAL)
+    ! adds memory for read arrays tmp_veloc & tmp_traction
+    sizeval = sizeval + 2.d0 * dble(NDIM) * dble(npoints_total) * dble(CUSTOM_REAL)
+    ! info output
     write(IMAIN,*) '    required maximum array size per slice   = ',sngl(sizeval / 1024.d0 / 1024.d0),'MB'
     write(IMAIN,*) '                                            = ',sngl(sizeval / 1024.d0 / 1024.d0 / 1024.d0),'GB'
     write(IMAIN,*)
@@ -3271,6 +3274,9 @@ contains
     endif
   endif
 
+  ! synchronizes
+  call synchronize_all()
+
   ! creates name for each rank process
   ! format: {TRACTION_PATH} / proc***_
   call create_name_database(prname_trac,myrank,TRACTION_PATH)
@@ -3306,6 +3312,9 @@ contains
   allocate(Tract_specfem(NDIM,npoints_local),stat=ier)
   if (ier /= 0) call exit_MPI(myrank,'error allocating array 2193')
   Tract_specfem(:,:) = 0.0_CUSTOM_REAL
+
+  ! synchronizes to be sure all processes had enough memory
+  call synchronize_all()
 
   ! interpolate wavefield solution in time
   !
