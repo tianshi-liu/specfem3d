@@ -244,6 +244,13 @@ end module scotch_par
            adjncy_tmp(1:nb_edges+1), &
            stat=ier)
   if (ier /= 0) stop 'Error allocating array part_tmp,...'
+  ! initializes
+  part_tmp(:) = 0
+  elmnts_load_tmp(:) = 0
+  ispec_global(:) = 0
+  ispec_local(:) = 0
+  xadj_tmp(:) = -1
+  adjncy_tmp(:) = 0
 
   ! partitions each p-level separately
   do ilevel = 1,num_p_level
@@ -330,7 +337,7 @@ end module scotch_par
     print *,'  p-level partitioning: p-level =',ilevel,'p =',p,'elements =',nspec_p !,'edges =',nb_edges_tmp
 
     ! scotch partitioning
-    ! arguments: #(1) graph_structure       #(2)baseval (either 0/1)    #(3)vertnbr (number_of_vertices)
+    ! arguments: #(1)graph_structure       #(2)baseval (either 0/1)    #(3)vertnbr (number_of_vertices)
     !            #(4)verttab (adjacency_index_array)            #(5)vendtab (adjacency_end_index_array (optional))
     !            #(6)velotab (vertex_load_array (optional))     #(7)vlbltab (vertex_label_array)
     !            #(7)edgenbr (number_of_arcs)                   #(8)edgetab (adjacency_array)
@@ -427,7 +434,7 @@ end module scotch_par
   integer :: current_partition
   logical, dimension(:), allocatable :: partition_available
   integer, dimension(:), allocatable :: part_remap, part_remap_inverse
-  integer :: ipart, unused_count, best_choice, ilevel
+  integer :: ipart, unused_count, best_choice, ilevel, ier
   integer :: p, ispec
 
   ! Try to reconnect the individually partitioned levels in a
@@ -436,9 +443,17 @@ end module scotch_par
   ! should be sufficient.
 
   if (SCOTCH_P_REMAP) then
-      allocate(partition_available(0:nparts-1))
-      allocate(part_remap(0:nparts-1))
-      allocate(part_remap_inverse(0:nparts-1))
+      allocate(partition_available(0:nparts-1),stat=ier)
+      if (ier /= 0) stop 'Error allocating partition_available array'
+      partition_available(:) = .true.
+
+      allocate(part_remap(0:nparts-1),stat=ier)
+      if (ier /= 0) stop 'Error allocating part_remap array'
+      part_remap(:) = -1
+
+      allocate(part_remap_inverse(0:nparts-1),stat=ier)
+      if (ier /= 0) stop 'Error allocating part_remap_inverse array'
+      part_remap_inverse(:) = -1
 
       do ilevel = 1,num_p_level-1
         part_remap(:) = -1
@@ -489,6 +504,9 @@ end module scotch_par
         enddo
 
       enddo ! ilevel
+
+      ! free temporary arrays
+      deallocate(partition_available,part_remap,part_remap_inverse)
 
     endif
 
