@@ -630,7 +630,7 @@
 
   case (INJECTION_TECHNIQUE_IS_SPECFEM)
     ! SPECFEM coupling
-    call read_specfem_file(Veloc_specfem,Tract_specfem,num_abs_boundary_faces*NGLLSQUARE)
+    call read_specfem_file(Veloc_specfem,Tract_specfem,num_abs_boundary_faces*NGLLSQUARE,it)
 
   case (INJECTION_TECHNIQUE_IS_FK)
     ! FK coupling
@@ -824,17 +824,31 @@
 
 !=============================================================================
 
-  subroutine read_specfem_file(Veloc_specfem,Tract_specfem,nb)
+  subroutine read_specfem_file(Veloc_specfem,Tract_specfem,nb,it)
 
-  use constants, only: CUSTOM_REAL,NDIM,IIN_veloc_dsm
+  use constants, only: myrank,CUSTOM_REAL,NDIM,IIN_veloc_dsm
 
   implicit none
 
   integer, intent(in) :: nb
   real(kind=CUSTOM_REAL), intent(out) :: Veloc_specfem(NDIM,nb)
   real(kind=CUSTOM_REAL), intent(out) :: Tract_specfem(NDIM,nb)
+  integer,intent(in) :: it
 
-  read(IIN_veloc_dsm) Veloc_specfem, Tract_specfem
+  ! local parameters
+  integer :: ier
+
+  ! reads velocity & traction
+  !read(IIN_veloc_dsm,iostat=ier) Veloc_specfem, Tract_specfem
+  ! w/ direct access
+  read(IIN_veloc_dsm,rec=it,iostat=ier) Veloc_specfem, Tract_specfem
+
+  ! check
+  if (ier /= 0) then
+    print *,'Error: rank ',myrank,'failed to read in wavefield (veloc & traction) at time step it = ',it
+    print *,'       Please check that the wavefield injection files proc***_sol_specfem.bin exists.'
+    call exit_MPI(myrank,'Error reading injection wavefield file')
+  endif
 
   end subroutine read_specfem_file
 

@@ -3082,7 +3082,7 @@ contains
   integer :: num_coupling_points_total,ntimesteps
   real(kind=CUSTOM_REAL), dimension(:,:), allocatable :: tmp_veloc,tmp_traction
   real(kind=CUSTOM_REAL), dimension(:,:,:), allocatable :: tmp_veloc_points_timeseries,tmp_traction_points_timeseries
-  integer :: offset_proc
+  integer :: offset_proc,reclen
 
   double precision :: tmin_file,tmax_file,tmin_curr,tmax_curr
   double precision :: sizeval
@@ -3158,7 +3158,14 @@ contains
   endif
 
   ! first line: #num_points #step_size #start_time #ntimesteps
-  read(IIN) num_coupling_points_total, dt_incr, start_time, ntimesteps
+  read(IIN,iostat=ier) num_coupling_points_total, dt_incr, start_time, ntimesteps
+
+  ! check
+  if (ier /= 0) then
+    print *,'Error: rank ',myrank,' failed to read file ',trim(filename)
+    print *,'       Please check that the file contains data...'
+    stop 'Error reading specfem_coupling_solution.bin'
+  endif
 
   ! solution file time range
   tmin_file = start_time  ! start_time is negative
@@ -3217,7 +3224,14 @@ contains
   ! read in points and save local time series
   do i = 1,ntimesteps
     ! reads current time step values for all points
-    read(IIN) tmp_veloc,tmp_traction
+    read(IIN,iostat=ier) tmp_veloc,tmp_traction
+
+    ! check
+    if (ier /= 0) then
+      print *,'Error: rank ',myrank,' failed to read wavefields in file ',trim(filename),' at timestep ',i
+      print *,'       Please check that the file contains all wavefield data...'
+      stop 'Error reading specfem_coupling_solution.bin'
+    endif
 
     ! assigns values on local points
     if (npoints_local > 0) then
@@ -3296,14 +3310,6 @@ contains
     call flush_IMAIN()
   endif
 
-  ! open files to store wavefield solution for this slice and simulation time stepping
-  open(unit=IOUT,file=trim(filename),status='unknown',action='write',form='unformatted',iostat=ier)
-  if (ier /= 0) then
-    print *,'Error: could not open file ',trim(filename)
-    print *,'       Please check if path exists...'
-    stop 'Error opening database proc***_sol_specfem.bin'
-  endif
-
   ! boundary arrays for reading/writing
   allocate(Veloc_specfem(NDIM,npoints_local),stat=ier)
   if (ier /= 0) call exit_MPI(myrank,'error allocating array 2192')
@@ -3315,6 +3321,32 @@ contains
 
   ! synchronizes to be sure all processes had enough memory
   call synchronize_all()
+
+  ! file with direct access
+  ! gets size of single record
+  inquire(iolength=reclen) Veloc_specfem
+  ! check integer size limit: size of reclen must fit onto an 4-byte integer
+  if (reclen > int(2147483646.0 / 2)) then
+    print *,'reclen needed exceeds integer 4-byte limit: ',reclen
+    print *,'  ',reclen,' custom_real/ndim/npoints_local = ',CUSTOM_REAL, NDIM, npoints_local
+    print *,'bit size Fortran: ',bit_size(reclen)
+    call exit_MPI(myrank,"Error reclen integer limit")
+  endif
+  ! record size for velocity & traction fields
+  reclen = 2 * reclen
+
+  ! open files to store wavefield solution for this slice and simulation time stepping
+  !open(unit=IOUT,file=trim(filename),status='unknown',action='write',form='unformatted',iostat=ier)
+  ! w/ direct access
+  open(unit=IOUT,file=trim(filename),status='unknown',action='write',form='unformatted', &
+       access='direct',recl=reclen,iostat=ier)
+
+  ! check
+  if (ier /= 0) then
+    print *,'Error: could not open file ',trim(filename)
+    print *,'       Please check if path exists...'
+    stop 'Error opening database proc***_sol_specfem.bin'
+  endif
 
   ! interpolate wavefield solution in time
   !
@@ -3374,7 +3406,13 @@ contains
 
   ! open the file created before
   ! to read in corresponding time slices in routine compute_Stacey_elastic()
-  open(unit=IIN_veloc_dsm,file=trim(filename),status='old',action='read',form='unformatted',iostat=ier)
+  !open(unit=IIN_veloc_dsm,file=trim(filename),status='old',action='read',form='unformatted',iostat=ier)
+  !
+  ! with direct access
+  open(unit=IIN_veloc_dsm,file=trim(filename),status='old',action='read',form='unformatted', &
+       access='direct',recl=reclen,iostat=ier)
+
+  ! check
   if (ier /= 0) then
     print *,'Error: could not open file ',trim(filename)
     print *,'Please check if traction file has been created for coupling with SPECFEM solution...'
@@ -3421,7 +3459,7 @@ contains
                                                                                   tmp_traction_points_timeseries
 
   ! local parameters
-  integer :: it_tmp,ipoin_local,i
+  integer :: it_tmp,ipoin_local,i,ier
   double precision :: current_time
   double precision :: tmin_file,tmax_file
 
@@ -3564,7 +3602,16 @@ contains
     endif
 
     ! store in file
-    write(IOUT) Veloc_specfem,Tract_specfem
+    !write(IOUT,iostat=ier) Veloc_specfem,Tract_specfem
+    ! w/ direct access
+    write(IOUT,rec=it_tmp,iostat=ier) Veloc_specfem,Tract_specfem
+
+    ! check
+    if (ier /= 0) then
+      print *,'Error: rank ',myrank,' failed to write out interpolated wavefields'
+      print *,'       Please check if enough file space is available...'
+      stop 'Error output interpolated wavefields'
+    endif
 
     ! user output
     if (myrank == 0) then
