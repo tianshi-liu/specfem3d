@@ -2259,7 +2259,7 @@
   implicit none
 
   integer, intent(in) :: num_coupling_points_total
-  real(kind=CUSTOM_REAL),dimension(7,num_coupling_points_total),intent(in) :: coupling_points
+  real(kind=CUSTOM_REAL),dimension(6,num_coupling_points_total),intent(in) :: coupling_points
 
   ! local parameters
   integer :: ipoin,islice,ispec,ier
@@ -2573,7 +2573,7 @@
   implicit none
 
   integer, intent(in) :: num_coupling_points_total
-  real(kind=CUSTOM_REAL),dimension(7,num_coupling_points_total),intent(in) :: coupling_points
+  real(kind=CUSTOM_REAL),dimension(6,num_coupling_points_total),intent(in) :: coupling_points
 
   double precision, dimension(num_coupling_points_total), intent(in) :: xi_point,eta_point,gamma_point
   double precision, dimension(num_coupling_points_total), intent(in) :: x_found,y_found,z_found

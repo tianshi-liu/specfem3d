@@ -2212,13 +2212,13 @@
     call flush_IMAIN()
 
     ! allocate points array
-    allocate(coupling_points(7,num_coupling_points_total),stat=ier)
+    allocate(coupling_points(6,num_coupling_points_total),stat=ier)
     if (ier /= 0) stop 'Error allocating coupling points array'
     coupling_points(:,:) = 0.0_CUSTOM_REAL
 
     ! reads in point infos
     do ipoin = 1,num_coupling_points_total
-      ! format: #x #y #z #nx #ny #nz #iproc
+      ! format: #x #y #z #nx #ny #nz
       read(IIN) coupling_points(:,ipoin)
     enddo
 
@@ -2234,13 +2234,13 @@
 
   ! allocate arrays on other processes
   if (.not. allocated(coupling_points)) then
-    allocate(coupling_points(7,num_coupling_points_total),stat=ier)
+    allocate(coupling_points(6,num_coupling_points_total),stat=ier)
     if (ier /= 0) stop 'Error allocating coupling points array'
     coupling_points(:,:) = 0.0_CUSTOM_REAL
   endif
 
   ! broadcast point infos
-  call bcast_all_cr(coupling_points,7*num_coupling_points_total)
+  call bcast_all_cr(coupling_points,6*num_coupling_points_total)
 
   ! locate coupling points
   call locate_coupling_points(num_coupling_points_total,coupling_points)
