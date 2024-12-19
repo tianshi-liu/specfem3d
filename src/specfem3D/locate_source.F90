@@ -288,6 +288,14 @@
 
   enddo ! end of loop on all the sources
 
+  ! coupling
+  if (COUPLE_WITH_INJECTION_TECHNIQUE) then
+    ! no sources needed as wavefield will be injected
+    ! set ficticious sources locations to first element in slice 0 (to avoid indexing issues later on)
+    islice_selected_source(:) = 0
+    ispec_selected_source(:) = 1
+  endif
+
   ! bcast from main process
   call bcast_all_i(islice_selected_source,NSOURCES)
   call bcast_all_i(idomain,NSOURCES)
@@ -316,6 +324,7 @@
   endif
   ! sets flag if source element in PML
   is_CPML_source(:) = .false.
+  is_CPML_source_all(:) = .false.
   do isource = 1,NSOURCES
     if (islice_selected_source(isource) == myrank) then
       ispec = ispec_selected_source(isource)

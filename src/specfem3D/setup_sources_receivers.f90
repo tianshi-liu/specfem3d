@@ -432,7 +432,8 @@
     ! checks if CMT source time function is a Heaviside
     ! (high-frequency oscillations don't look good in movies)
     if (.not. USE_FORCE_POINT_SOURCE .and. &
-        .not. USE_EXTERNAL_SOURCE_FILE) then
+        .not. USE_EXTERNAL_SOURCE_FILE .and. &
+        .not. COUPLE_WITH_INJECTION_TECHNIQUE) then
       if (minval(hdur(:)) < TINYVAL) &
         stop 'Error hdur too small for movie creation, movies do not make sense for Heaviside source'
     endif
