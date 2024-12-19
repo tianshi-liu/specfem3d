@@ -64,7 +64,7 @@
 
   !! setup wavefield discontinuity interface
   use shared_parameters, only: IS_WAVEFIELD_DISCONTINUITY
-  use wavefield_discontinuity_generate_databases, only: &
+  use wavefield_discontinuity_db, only: &
                                setup_boundary_wavefield_discontinuity, &
                                read_partition_files_wavefield_discontinuity
 

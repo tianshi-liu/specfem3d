@@ -71,7 +71,7 @@
 
   !! setup wavefield discontinuity interface
   use shared_parameters, only: IS_WAVEFIELD_DISCONTINUITY
-  use wavefield_discontinuity_generate_databases, only: &
+  use wavefield_discontinuity_db, only: &
                               save_arrays_solver_mesh_wavefield_discontinuity
 
   implicit none
@@ -858,7 +858,7 @@
     num_coupling_points = num_abs_boundary_faces * NGLLSQUARE
 
     ! get local coupling points
-    allocate(coupling_points(7,num_coupling_points),stat=ier)
+    allocate(coupling_points(6,num_coupling_points),stat=ier)
     if (ier /= 0) stop 'Error allocating coupling points array'
     coupling_points(:,:) = 0.0_CUSTOM_REAL
 
@@ -889,7 +889,6 @@
         coupling_points(4,ipoin) = nx
         coupling_points(5,ipoin) = ny
         coupling_points(6,ipoin) = nz
-        coupling_points(7,ipoin) = real(iproc,kind=CUSTOM_REAL)
       enddo
     enddo
     ! check
@@ -927,7 +926,7 @@
 
       ! start writing out coupling point from this slice
       do ipoin = 1,num_coupling_points
-        ! format: #x #y #z #nx #ny #nz #iproc
+        ! format: #x #y #z #nx #ny #nz
         write(IOUT) coupling_points(:,ipoin)
       enddo
     endif
@@ -942,12 +941,12 @@
           if (num_coupling_points > 0) then
             ! re-allocate array
             deallocate(coupling_points)
-            allocate(coupling_points(7,num_coupling_points),stat=ier)
+            allocate(coupling_points(6,num_coupling_points),stat=ier)
             if (ier /= 0) stop 'Error allocating coupling points array for collecting'
             coupling_points(:,:) = 0.0_CUSTOM_REAL
 
             ! main collects
-            call recvv_cr(coupling_points,7*num_coupling_points,iproc,itag)
+            call recvv_cr(coupling_points,6*num_coupling_points,iproc,itag)
 
             ! write out points
             do ipoin = 1,num_coupling_points
@@ -959,7 +958,7 @@
       else
         ! secondary processes send to main
         if (num_coupling_points > 0) then
-          call sendv_cr(coupling_points,7*num_coupling_points,0,itag)
+          call sendv_cr(coupling_points,6*num_coupling_points,0,itag)
         endif
       endif
     endif

@@ -93,7 +93,7 @@ generate_databases_MODULES = \
 	$(FC_MODDIR)/model_sep_mod.$(FC_MODEXT) \
 	$(FC_MODDIR)/model_tomography_par.$(FC_MODEXT) \
 	$(FC_MODDIR)/salton_trough_par.$(FC_MODEXT) \
-	$(FC_MODDIR)/wavefield_discontinuity_generate_databases.$(FC_MODEXT) \
+	$(FC_MODDIR)/wavefield_discontinuity_db.$(FC_MODEXT) \
 	$(EMPTY_MACRO)
 
 
