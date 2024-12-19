@@ -3397,8 +3397,14 @@ contains
   call interpolate_with_Catmull_Rom(ntimesteps,dt_incr,start_time, &
                                     tmp_veloc_points_timeseries,tmp_traction_points_timeseries)
 
+  ! closes file
+  close(IOUT)
+
   ! free temporary arrays
   deallocate(tmp_veloc_points_timeseries,tmp_traction_points_timeseries)
+
+  ! synchronizes MPI processes
+  call synchronize_all()
 
   ! clear arrays for reading
   Veloc_specfem(:,:) = 0.0_CUSTOM_REAL
