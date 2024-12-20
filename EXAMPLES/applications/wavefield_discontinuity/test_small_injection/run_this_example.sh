@@ -43,7 +43,7 @@ cp DATA/STATIONS OUTPUT_FILES/
 # prepare to run the mesher
 # at this point the meshfem3D files must be well-prepared,
 # the Par_file should be set properly to turn on IS_WAVEFIELD_DISCONTINUITY,
-# an empty FORCESOLUTION file should be present to indicate 
+# an empty FORCESOLUTION file should be present to indicate
 # there is no external source,
 # and a wavefield_discontinuity_box file to designate the interface
 mkdir -p MESH/

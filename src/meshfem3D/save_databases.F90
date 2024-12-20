@@ -582,7 +582,7 @@
       stop 'Invalid NPROC_XI and/or NPROC_ETA for SAVE_MESH_AS_CUBIT output'
     endif
 
-    !! VM VM add outputs as CUBIT
+    ! add outputs as CUBIT
     call save_output_mesh_files_as_cubit(nspec,nglob, &
                                          nodes_coords, ispec_material_id, &
                                          nspec2D_xmin,nspec2D_xmax,nspec2D_ymin,nspec2D_ymax, &
@@ -615,12 +615,13 @@
 
 !---------------------------------------------------------------------------------------------------------------
 
-  !! VM VM add subroutine to save meshes in case of a single MPI process
   subroutine save_output_mesh_files_as_cubit(nspec,nglob, &
                                              nodes_coords, ispec_material_id, &
                                              nspec2D_xmin,nspec2D_xmax,nspec2D_ymin,nspec2D_ymax, &
                                              ibelm_xmin,ibelm_xmax,ibelm_ymin,ibelm_ymax,ibelm_bottom,ibelm_top, &
                                              nspec_CPML_total)
+
+! subroutine to save meshes in case of a single MPI process
 
   use constants, only: NDIM,IMAIN,myrank,IIN_DB
   use constants_meshfem, only: NGLLX_M,NGLLY_M,NGLLZ_M
@@ -883,11 +884,12 @@
 
 !---------------------------------------------------------------------------------------------------------------
 
-  !! VM VM add subroutine to save meshes in case of a single MPI process
   subroutine save_output_mesh_files_for_coupled_model(nspec, &
                                                       nspec2D_xmin,nspec2D_xmax,nspec2D_ymin,nspec2D_ymax, &
                                                       ibelm_xmin,ibelm_xmax,ibelm_ymin,ibelm_ymax,ibelm_bottom,ibelm_top, &
                                                       xgrid,ygrid,zgrid)
+
+! subroutine to save meshes in case of a single MPI process
 
   use constants, only: NGLLX, NGLLY, NGLLZ, NDIM, ZERO, IMAIN, myrank, &
     INJECTION_TECHNIQUE_IS_AXISEM

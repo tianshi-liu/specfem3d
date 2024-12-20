@@ -89,6 +89,9 @@
     endif
   endif
 
+  ! coupling
+  if (COUPLE_WITH_INJECTION_TECHNIQUE) call couple_with_injection_cleanup()
+
   ! ADIOS file i/o
   if (ADIOS_ENABLED) then
     call finalize_adios()

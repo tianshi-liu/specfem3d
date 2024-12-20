@@ -200,12 +200,13 @@ end module constants
   logical :: IO_compute_task = .true.
 
   ! external code coupling (DSM, AxiSEM)
-  logical :: COUPLE_WITH_INJECTION_TECHNIQUE
-  integer :: INJECTION_TECHNIQUE_TYPE
-  character(len=MAX_STRING_LEN) :: TRACTION_PATH,TRACTION_PATH_new
+  logical :: COUPLE_WITH_INJECTION_TECHNIQUE = .false.
+  integer :: INJECTION_TECHNIQUE_TYPE = 0
+  character(len=MAX_STRING_LEN) :: TRACTION_PATH
   character(len=MAX_STRING_LEN) :: FKMODEL_FILE
-  logical :: MESH_A_CHUNK_OF_THE_EARTH
-  logical :: RECIPROCITY_AND_KH_INTEGRAL
+  logical :: MESH_A_CHUNK_OF_THE_EARTH = .false.
+  logical :: RECIPROCITY_AND_KH_INTEGRAL = .false.
+  double precision :: INJECTION_START_TIME = -999999.d0
 
   ! prescribed wavefield discontinuity on an interface
   logical :: IS_WAVEFIELD_DISCONTINUITY = .false. ! if .true. then wavefield discontinuity is turned on (default is false)

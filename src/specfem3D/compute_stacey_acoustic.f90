@@ -507,6 +507,11 @@
     ! safety stop
     stop 'AxiSEM coupling for acoustic domains is not implemented yet'
 
+  case (INJECTION_TECHNIQUE_IS_SPECFEM)
+    ! AxiSEM coupling
+    ! safety stop
+    stop 'SPECFEM coupling for acoustic domains is not implemented yet'
+
   case (INJECTION_TECHNIQUE_IS_FK)
     ! FK coupling
     ! safety check only P-wave incident

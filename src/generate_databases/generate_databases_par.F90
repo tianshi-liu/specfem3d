@@ -320,6 +320,15 @@
   integer :: num_colors_outer_elastic,num_colors_inner_elastic
   integer, dimension(:), allocatable :: num_elem_colors_elastic
 
+  ! Vs30 model
+  logical :: USE_MODEL_LAYER_VS30 = .false.
+  ! Ss30 interface definition
+  logical :: SUPPRESS_UTM_PROJECTION_VS30
+  real(kind=CUSTOM_REAL),dimension(:,:), allocatable :: interface_model_vs30
+  integer :: npx_interface_vs30,npy_interface_vs30
+  double precision :: orig_x_interface_vs30,orig_y_interface_vs30
+  double precision :: spacing_x_interface_vs30,spacing_y_interface_vs30
+
   end module create_regions_mesh_ext_par
 
 

@@ -321,7 +321,7 @@
         print *,'                               ispec         :',ispec_selected_rec(irec),'out of ',NSPEC_AB
         print *,'                               domain        :',idomain(irec)
         print *,'                               xi/eta/gamma  :',xi_receiver(irec),eta_receiver(irec),gamma_receiver(irec)
-        print *,'                               final_distance: ',final_distance(irec)
+        print *,'                               final_distance:',final_distance(irec)
         print *
         print *,'Please check your receiver position in file DATA/STATIONS, and move it closer the mesh geometry - exiting...'
         print *

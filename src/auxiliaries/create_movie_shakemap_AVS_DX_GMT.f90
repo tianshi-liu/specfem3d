@@ -91,6 +91,7 @@
   integer, dimension(:), allocatable :: iglob,locval,ireorder
   logical, dimension(:), allocatable :: ifseg,mask_point
   double precision, dimension(:), allocatable :: xp,yp,zp,xp_save,yp_save,zp_save,field_display
+  double precision :: val
 
   ! movie files stored by solver
   real(kind=CUSTOM_REAL), dimension(:), allocatable :: &
@@ -235,10 +236,10 @@
     if (inorm < 1 .or. inorm > 3) stop 'incorrect value of inorm'
     print *
     print *,'apply non-linear scaling to shaking map:'
-    print *,'1=non-linear  2=no scaling'
+    print *,'1=non-linear  2=no scaling 3=tabulated Modified Mercalli Intensity (MMI)'
     print *
     read(5,*) iscaling_shake
-    if (iscaling_shake < 1 .or. iscaling_shake > 2) stop 'incorrect value of iscaling_shake'
+    if (iscaling_shake < 1 .or. iscaling_shake > 3) stop 'incorrect value of iscaling_shake'
   else
     print *
     print *,'movie data:'
@@ -401,7 +402,7 @@
                   ! norm acceleration
                   display(i,j) = vectorz
                 endif
-                !!!! NL NL mute value near source
+                ! mute value near source
                 if (MUTE_SOURCE) then
                   if ( (sqrt(((x(i,j) - (X_SOURCE_EXT_MESH))**2 + &
                               (y(i,j) - (Y_SOURCE_EXT_MESH))**2 + &
@@ -575,6 +576,107 @@
         print *
       endif
 
+      ! Modified Mercalli Intensity (MMI)
+      if (plot_shaking_map) then
+        if (iscaling_shake == 3 .and. (inorm == 2 .or. inorm == 3)) then
+          ! tabulated Modified Mercalli Intensity (MMI)
+          ! according to Table 1 from reference:
+          ! Wald et al. (1999)
+          ! "Relationships between Peak Ground Acceleration, Peak Ground Velocity, and Modified Mercalli Intensity in California"
+          ! Earthquake Spectra, Volume 15, 1999
+          !
+          ! see: https://www.dtsc-ssfl.com/files/lib_ceqa/ref_draft_peir/Chap4_5-Geology/68331_Wald_et_al_1999.pdf
+          print *,'converting to tabulated Modified Mercalli Intensity (MMI)'
+
+          if (inorm == 2) then
+            ! tabulated PGV
+            print *,'using PGV table from Wald et al. (1999)'
+            ! loop over all points
+            do ipoin = 1,npointot
+              val = field_display(ipoin)
+              ! converts PGV in m/s to cm/s
+              val = val * 100.d0
+              ! Table 1
+              if (val < 0.1) then
+                field_display(ipoin) = 1.d0     ! MMI I
+              ! originally Wald uses range [0.1-1.1] for II-III
+              ! else if (val < 1.1) then
+              !  field_display(ipoin) = 2.5d0    ! MMI II-III
+              ! here, we further divide to separate range II and III according to Figure 4
+              ! or using their preferred scaling Eq (4): I_mm = 2.10 * log10( PGV in cm/s ) + 3.4
+              !                                          -> I_mm ~ 2.5 for 0.4 cm/s
+              else if (val < 0.4) then
+                field_display(ipoin) = 2.d0     ! MMI II
+              else if (val < 1.1) then
+                field_display(ipoin) = 3.d0     ! MMI III
+              else if (val < 3.4) then
+                field_display(ipoin) = 4.d0     ! MMI IV
+              else if (val < 8.1) then
+                field_display(ipoin) = 5.d0     ! MMI V
+              else if (val < 16.0) then
+                field_display(ipoin) = 6.d0     ! MMI VI
+              else if (val < 31.0) then
+                field_display(ipoin) = 7.d0     ! MMI VII
+              else if (val < 60.0) then
+                field_display(ipoin) = 8.d0     ! MMI VIII
+              else if (val < 116.0) then
+                field_display(ipoin) = 9.d0     ! MMI IX
+              else
+                field_display(ipoin) = 10.d0    ! MMI X+
+              endif
+            enddo
+          else if (inorm == 3) then
+            ! tabulated PGA
+            print *,'using PGA table from Wald et al. (1999)'
+            ! loop over all points
+            do ipoin = 1,npointot
+              val = field_display(ipoin)
+              ! converts PGA in m/s^2 to % g
+              ! using g == 9.81 m/s^2, conversion to percent g is: (val / g) * 100
+              val = (val / 9.81d0) * 100.d0
+              ! Table 1
+              if (val < 0.17) then
+                field_display(ipoin) = 1.d0     ! MMI I
+              ! originally Wald uses range [0.17-1.4] for II-III
+              !else if (val < 1.4) then
+              !  field_display(ipoin) = 2.5d0    ! MMI II-III
+              ! here, we further divide to separate range II and III according to Figure 4
+              ! or using their preferred scaling Eq (3): I_mm = 2.20 * log10( PGA in cm/s^2 ) + 1.0
+              !                                          -> I_mm ~ 2.5 for 0.5 %g
+              else if (val < 0.5) then
+                field_display(ipoin) = 2.d0    ! MMI II
+              else if (val < 1.4) then
+                field_display(ipoin) = 3.d0     ! MMI III
+              else if (val < 3.9) then
+                field_display(ipoin) = 4.d0     ! MMI IV
+              else if (val < 9.2) then
+                field_display(ipoin) = 5.d0     ! MMI V
+              else if (val < 18.0) then
+                field_display(ipoin) = 6.d0     ! MMI VI
+              else if (val < 34.0) then
+                field_display(ipoin) = 7.d0     ! MMI VII
+              else if (val < 65.0) then
+                field_display(ipoin) = 8.d0     ! MMI VIII
+              else if (val < 124.0) then
+                field_display(ipoin) = 9.d0     ! MMI IX
+              else
+                field_display(ipoin) = 10.d0   ! MMI X+
+              endif
+            enddo
+          endif
+
+          ! compute min and max of data value to normalize
+          min_field_current = minval(field_display(:))
+          max_field_current = maxval(field_display(:))
+
+          ! print minimum and maximum MMI in current snapshot
+          print *
+          print *,'minimum intensity (MMI) in current snapshot = ',min_field_current
+          print *,'maximum intensity (MMI) in current snapshot = ',max_field_current
+          print *
+        endif
+      endif
+
       ! apply scaling in all cases for movies
       if (.not. plot_shaking_map) then
 
@@ -680,9 +782,8 @@
 
       endif
 
-
+      ! GMT format output
       if (USE_GMT) then
-
         ! output list of points
         mask_point = .false.
         do ispec = 1,nspectot_AVS_max
@@ -697,9 +798,7 @@
             mask_point(ibool_number) = .true.
           enddo
         enddo
-
       else
-
         ! output list of points
         mask_point = .false.
         ipoin = 0
@@ -798,8 +897,8 @@
       close(11)
 
     ! end of loop and test on all the time steps for all the movie images
-   endif
-enddo ! it
+    endif
+  enddo ! it
 
   print *
   print *,'done creating movie or shaking map'

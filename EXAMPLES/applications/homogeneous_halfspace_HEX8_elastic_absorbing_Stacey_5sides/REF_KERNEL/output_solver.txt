@@ -24,7 +24,7 @@
 
  smallest and largest possible floating-point numbers are:    1.17549435E-38   3.40282347E+38
 
- velocity model:   default 
+ velocity model:   default
 
  Reading mesh databases...
    reads binary mesh files: proc***_external_mesh.bin
@@ -68,33 +68,33 @@
 
 
  ********
- Model: P   velocity min,max =    2800.00000       2800.00000    
- Model: S   velocity min,max =    1500.00000       1500.00000    
+ Model: P   velocity min,max =    2800.00000       2800.00000
+ Model: S   velocity min,max =    1500.00000       1500.00000
 
- Model: Poisson's ratio min,max =   0.298747778      0.298747778    
+ Model: Poisson's ratio min,max =   0.298747778      0.298747778
  ********
 
  *********************************************
  *** Verification of simulation parameters ***
  *********************************************
 
- *** Xmin and Xmax of the model =    0.00000000       134000.000    
- *** Ymin and Ymax of the model =    0.00000000       134000.000    
- *** Zmin and Zmax of the model =   -60000.0000       0.00000000    
+ *** Xmin and Xmax of the model =    0.00000000       134000.000
+ *** Ymin and Ymax of the model =    0.00000000       134000.000
+ *** Zmin and Zmax of the model =   -60000.0000       0.00000000
 
- *** Max GLL point distance =    1227.47656    
- *** Min GLL point distance =    642.726562    
- *** Max/min ratio =    1.90979588    
+ *** Max GLL point distance =    1227.47656
+ *** Min GLL point distance =    642.726562
+ *** Max/min ratio =    1.90979588
 
- *** Max element size =    3750.00000    
- *** Min element size =    3722.21875    
- *** Max/min ratio =    1.00746357    
+ *** Max element size =    3750.00000
+ *** Min element size =    3722.21875
+ *** Max/min ratio =    1.00746357
 
- *** Minimum period resolved =    3.12500000    
- *** Maximum suggested time step =   0.109999999    
+ *** Minimum period resolved =    3.12500000
+ *** Maximum suggested time step =   0.109999999
 
  *** for DT :    5.0000000000000003E-002
- *** Max stability for wave velocities =   0.217822030    
+ *** Max stability for wave velocities =   0.217822030
 
  Elapsed time for checking mesh resolution in seconds =    1.5842708000000000E-002
  saving VTK files for Courant number and minimum period
@@ -131,10 +131,10 @@
                   in element         2755
                   in elastic domain
 
-   using moment tensor source: 
-     xi coordinate of source in that element:    1.0000000000000000     
-     eta coordinate of source in that element:    1.0000000000000000     
-     gamma coordinate of source in that element:    1.0000000000000000     
+   using moment tensor source:
+     xi coordinate of source in that element:    1.0000000000000000
+     eta coordinate of source in that element:    1.0000000000000000
+     gamma coordinate of source in that element:    1.0000000000000000
 
    source time function:
      using (quasi) Heaviside source time function
@@ -144,24 +144,24 @@
 
    magnitude of the source:
         scalar moment M0 =    2.6266994498800193E+028  dyne-cm
-     moment magnitude Mw =    8.2462737794883481     
+     moment magnitude Mw =    8.2462737794883481
 
    original (requested) position of the source:
 
-             latitude:    67000.000000000000     
-            longitude:    67000.000000000000     
+             latitude:    67000.000000000000
+            longitude:    67000.000000000000
 
-                x:    67000.000000000000     
-                y:    67000.000000000000     
+                x:    67000.000000000000
+                y:    67000.000000000000
             depth:    30.000000000000000       km
-   topo elevation:    0.0000000000000000     
+   topo elevation:    0.0000000000000000
 
    position of the source that will be used:
 
-                x:    67000.000000000000     
-                y:    67000.000000000000     
+                x:    67000.000000000000
+                y:    67000.000000000000
             depth:    30.000000000000000       km
-                z:   -30000.000000000000     
+                z:   -30000.000000000000
 
    error in location of the source:    0.00000000      m
 
@@ -192,30 +192,30 @@
 
 
  station #            1     DB    X20
-      original latitude:    67000.0000    
-      original longitude:    22732.1406    
-      original x:    22732.1406    
-      original y:    67000.0000    
+      original latitude:    67000.0000
+      original longitude:    22732.1406
+      original x:    22732.1406
+      original y:    67000.0000
       original depth:    0.00000000      m
-      horizontal distance:    44.2678604    
-      target x, y, z:    22732.1406       67000.0000       0.00000000    
+      horizontal distance:    44.2678604
+      target x, y, z:    22732.1406       67000.0000       0.00000000
       closest estimate found:    0.00000000      m away
 
       receiver located in slice            2
                        in element         4904
                        in elastic domain
-      at coordinates: 
-      xi    =  -0.78571608325633080     
-      eta   =    1.0000000000000000     
-      gamma =    1.0000000000000000     
-      rotation matrix: 
-      nu1 =    1.00000000       0.00000000       0.00000000    
-      nu2 =    0.00000000       1.00000000       0.00000000    
-      nu3 =    0.00000000       0.00000000       1.00000000    
-      x:    22732.139999999999     
-      y:    67000.000000000000     
+      at coordinates:
+      xi    =  -0.78571608325633080
+      eta   =    1.0000000000000000
+      gamma =    1.0000000000000000
+      rotation matrix:
+      nu1 =    1.00000000       0.00000000       0.00000000
+      nu2 =    0.00000000       1.00000000       0.00000000
+      nu3 =    0.00000000       0.00000000       1.00000000
+      x:    22732.139999999999
+      y:    67000.000000000000
       depth:    0.0000000000000000       m
-      z:    0.0000000000000000     
+      z:    0.0000000000000000
 
 
 
@@ -285,14 +285,14 @@
    number of regular shaped elements  :            0
    number of irregular shaped elements:         5137
    fused array done
-   bandwidth test (STREAM TRIAD): 
+   bandwidth test (STREAM TRIAD):
       memory accesses =    11.7950935     MB
       timing  min/max =    7.90624996E-04 s /    8.15416977E-04 s
       timing      avg =    8.06912489E-04 s
       bandwidth       =    14.2749634     GB/s
 
 
- Elapsed time for preparing timerun in seconds =   0.22194879200000006     
+ Elapsed time for preparing timerun in seconds =   0.22194879200000006
 
  ************
   time loop
@@ -310,16 +310,16 @@
 
  Time step #            5
  Time:   -9.80000019      seconds
- Elapsed time in seconds =   0.57578966700000001     
+ Elapsed time in seconds =   0.57578966700000001
  Elapsed time in hh:mm:ss =      0 h 00 m 00 s
- Mean elapsed time per time step in seconds =   0.115157932    
- Max norm displacement vector U in all slices (m) =    0.00000000    
- Max norm displacement vector U (backward) in all slices (m) =    828566.938    
+ Mean elapsed time per time step in seconds =   0.115157932
+ Max norm displacement vector U in all slices (m) =    0.00000000
+ Max norm displacement vector U (backward) in all slices (m) =    828566.938
  Time steps done =            5  out of          700
  Time steps remaining =          695
- Estimated remaining time in seconds =    80.0347672    
+ Estimated remaining time in seconds =    80.0347672
  Estimated remaining time in hh:mm:ss =      0 h 01 m 20 s
- Estimated total run time in seconds =    80.6105499    
+ Estimated total run time in seconds =    80.6105499
  Estimated total run time in hh:mm:ss =      0 h 01 m 20 s
  We have done   0.714285731     % of that
  The run will finish approximately on (in local time): Thu Nov 14, 2024 09:37
@@ -330,32 +330,32 @@
 
  Time step #          500
  Time:    14.9499998      seconds
- Elapsed time in seconds =    63.784059361999994     
+ Elapsed time in seconds =    63.784059361999994
  Elapsed time in hh:mm:ss =      0 h 01 m 03 s
- Mean elapsed time per time step in seconds =   0.127568126    
+ Mean elapsed time per time step in seconds =   0.127568126
  Max norm displacement vector U in all slices (m) =    6.67026429E-16
- Max norm displacement vector U (backward) in all slices (m) =    421910.750    
+ Max norm displacement vector U (backward) in all slices (m) =    421910.750
  Time steps done =          500  out of          700
  Time steps remaining =          200
- Estimated remaining time in seconds =    25.5136242    
+ Estimated remaining time in seconds =    25.5136242
  Estimated remaining time in hh:mm:ss =      0 h 00 m 25 s
- Estimated total run time in seconds =    89.2976837    
+ Estimated total run time in seconds =    89.2976837
  Estimated total run time in hh:mm:ss =      0 h 01 m 29 s
  We have done    71.4285736     % of that
  The run will finish approximately on (in local time): Thu Nov 14, 2024 09:37
 
  Time step #          700
  Time:    24.9500008      seconds
- Elapsed time in seconds =    89.236308331000004     
+ Elapsed time in seconds =    89.236308331000004
  Elapsed time in hh:mm:ss =      0 h 01 m 29 s
- Mean elapsed time per time step in seconds =   0.127480447    
+ Mean elapsed time per time step in seconds =   0.127480447
  Max norm displacement vector U in all slices (m) =    5.62951702E-16
- Max norm displacement vector U (backward) in all slices (m) =   0.386163443    
+ Max norm displacement vector U (backward) in all slices (m) =   0.386163443
  Time steps done =          700  out of          700
  Time steps remaining =            0
- Estimated remaining time in seconds =    0.00000000    
+ Estimated remaining time in seconds =    0.00000000
  Estimated remaining time in hh:mm:ss =      0 h 00 m 00 s
- Estimated total run time in seconds =    89.2363052    
+ Estimated total run time in seconds =    89.2363052
  Estimated total run time in hh:mm:ss =      0 h 01 m 29 s
  We have done    100.000000     % of that
 
@@ -364,7 +364,7 @@
  Writing the seismograms in parallel took    5.20829999E-05  seconds
 
  Time loop finished. Timing info:
- Total elapsed time in seconds =    89.384531414999998     
+ Total elapsed time in seconds =    89.384531414999998
  Total elapsed time in hh:mm:ss =      0 h 01 m 29 s
 
  finalizing simulation

@@ -26,7 +26,7 @@
 !=====================================================================
 
 
-module wavefield_discontinuity_generate_databases
+module wavefield_discontinuity_db
   use constants, only: CUSTOM_REAL
 
   !! boundary of wavefield discontinuity, read from database file
@@ -718,4 +718,4 @@ contains
   endif
   end subroutine get_points_boundary_wd
 
-end module wavefield_discontinuity_generate_databases
+end module wavefield_discontinuity_db

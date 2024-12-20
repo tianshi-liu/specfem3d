@@ -33,6 +33,7 @@
   use specfem_par_elastic
   use specfem_par_poroelastic
   use specfem_par_movie
+  use specfem_par_coupling, only: do_save_coupling_wavefield
 
   use gravity_perturbation, only: gravity_timeseries, GRAVITY_SIMULATION
 
@@ -369,6 +370,9 @@
 
         ! outputs movie files
         if (MOVIE_SIMULATION) call write_movie_output()
+
+        ! for coupling with specfem injection technique
+        if (do_save_coupling_wavefield) call store_coupling_points_wavefield()
 
         ! first step of noise tomography, i.e., save a surface movie at every time step
         ! modified from the subroutine 'write_movie_surface'
