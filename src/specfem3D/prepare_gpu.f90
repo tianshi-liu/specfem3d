@@ -43,6 +43,8 @@
     pml_convolution_coef_alpha,pml_convolution_coef_beta, &
     pml_convolution_coef_abar,pml_convolution_coef_strain
 
+  use wavefield_discontinuity_solver, only: prepare_wavefield_discontinuity_GPU
+
   implicit none
 
   ! local parameters
@@ -97,6 +99,7 @@
                                 SAVE_SEISMOGRAMS_ACCELERATION,SAVE_SEISMOGRAMS_PRESSURE, &
                                 NB_RUNS_ACOUSTIC_GPU, &
                                 FAULT_SIMULATION, &
+                                IS_WAVEFIELD_DISCONTINUITY, &
                                 UNDO_ATTENUATION_AND_OR_PML, &
                                 PML_CONDITIONS)
 
@@ -277,6 +280,16 @@
     if (SIMULATION_TYPE_KIN) then
       stop 'Kinematic rupture simulations on GPU not implemented yet'
     endif
+  endif
+
+  ! prepares wavefield discontinuity
+  if (IS_WAVEFIELD_DISCONTINUITY) then
+    ! user output
+    if (myrank == 0) then
+      write(IMAIN,*) "  loading wavefield discontinuity"
+      call flush_IMAIN()
+    endif
+    call prepare_wavefield_discontinuity_GPU()
   endif
 
   ! synchronizes processes

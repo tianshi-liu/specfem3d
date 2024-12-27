@@ -1076,8 +1076,6 @@
   endif
 
   if (IS_WAVEFIELD_DISCONTINUITY) then
-    if (GPU_MODE) &
-      stop 'wavefield discontinuity problem cannot be solved on GPU yet'
     if (ATTENUATION) &
       stop 'wavefield discontinuity problem cannot be solved with attenuation'
   endif

@@ -34,6 +34,10 @@
   use specfem_par_poroelastic
   use specfem_par_movie
 
+  !! solving wavefield discontinuity problem with non-split-node scheme
+  use wavefield_discontinuity_solver, only: &
+               prepare_timerun_wavefield_discontinuity
+
   implicit none
 
   ! local parameters
@@ -80,6 +84,9 @@
 
   ! Stacey boundaries
   call prepare_timerun_stacey()
+
+  ! wavefield discontinuity
+  call prepare_timerun_wavefield_discontinuity()
 
   ! prepares ADJOINT simulations
   call prepare_timerun_adjoint()

@@ -61,6 +61,7 @@ gpu_specfem3D_OBJECTS = \
 	$O/transfer_fields_cuda.o \
 	$O/update_displacement_cuda.o \
 	$O/write_seismograms_cuda.o \
+	$O/wavefield_discontinuity_cuda.o \
 	$(EMPTY_MACRO)
 
 gpu_specfem3D_STUBS = \

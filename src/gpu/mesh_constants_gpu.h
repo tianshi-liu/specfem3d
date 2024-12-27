@@ -789,6 +789,20 @@ typedef struct mesh_ {
   int use_Kelvin_Voigt_damping;
   realw* d_Kelvin_Voigt_eta;
 
+  // prescribed wavefield discontinuity on an interface
+  int is_wavefield_discontinuity;
+  int* d_ispec_to_elem_wd;
+  int* d_ibool_wd;
+  int* d_boundary_to_iglob_wd;
+  realw* d_mass_in_wd;
+  int* d_face_ijk_wd;
+  int* d_face_ispec_wd;
+  realw* d_face_normal_wd;
+  realw* d_face_jacobian2Dw_wd;
+  realw* d_displ_wd;
+  realw* d_accel_wd;
+  realw* d_traction_wd;
+
   // for option NB_RUNS_FOR_ACOUSTIC_GPU
   int* run_number_of_the_source;
 

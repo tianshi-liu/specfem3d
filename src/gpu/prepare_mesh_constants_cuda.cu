@@ -106,6 +106,7 @@ void FC_FUNC_(prepare_constants_device,
                                         int* SAVE_SEISMOGRAMS_ACCELERATION,int* SAVE_SEISMOGRAMS_PRESSURE,
                                         int* h_NB_RUNS_ACOUSTIC_GPU,
                                         int* FAULT_SIMULATION,
+                                        int* IS_WAVEFIELD_DISCONTINUITY,
                                         int* UNDO_ATTENUATION_AND_OR_PML,
                                         int* PML_CONDITIONS) {
 
@@ -419,6 +420,9 @@ void FC_FUNC_(prepare_constants_device,
   mp->fault_simulation = *FAULT_SIMULATION;
   // Kelvin_voigt initialization
   mp->use_Kelvin_Voigt_damping = 0;
+
+  // prescribed wavefield discontinuity
+  mp->is_wavefield_discontinuity = *IS_WAVEFIELD_DISCONTINUITY;
 
   GPU_ERROR_CHECKING("prepare_constants_device");
 }
@@ -1541,6 +1545,51 @@ void FC_FUNC_(prepare_fault_device,
   }
 }
 
+
+/* ----------------------------------------------------------------------------------------------- */
+
+// wavefield discontinuity
+
+/* ----------------------------------------------------------------------------------------------- */
+
+extern EXTERN_LANG
+void FC_FUNC_(prepare_wavefield_discontinuity_device,
+              PREPARE_WAVEFIELD_DISCONTINUITY_DEVICE)(
+                             long* Mesh_pointer,
+                             int* ispec_to_elem_wd,
+                             int* nglob_wd,
+                             int* nspec_wd,
+                             int* ibool_wd,
+                             int* boundary_to_iglob_wd,
+                             realw* mass_in_wd,
+                             int* nfaces_wd,
+                             int* face_ijk_wd,
+                             int* face_ispec_wd,
+                             realw* face_normal_wd,
+                             realw* face_jacobian2Dw_wd) {
+  TRACE("prepare_wavefield_discontinuity_device");
+  Mesh* mp = (Mesh*)(*Mesh_pointer);
+
+  // arrays
+  gpuCreateCopy_todevice_int((void**)&mp->d_ispec_to_elem_wd, ispec_to_elem_wd, mp->NSPEC_AB);
+  gpuCreateCopy_todevice_int((void**)&mp->d_boundary_to_iglob_wd, boundary_to_iglob_wd, (*nglob_wd));
+  gpuCreateCopy_todevice_realw((void**)&mp->d_mass_in_wd, mass_in_wd, (*nglob_wd));
+  gpuCreateCopy_todevice_int((void**)&mp->d_face_ispec_wd, face_ispec_wd, (*nfaces_wd));
+  gpuCreateCopy_todevice_int((void**)&mp->d_face_ijk_wd, face_ijk_wd, 3*NGLL2*(*nfaces_wd));
+  gpuCreateCopy_todevice_realw((void**)&mp->d_face_normal_wd, face_normal_wd, NDIM*NGLL2*(*nfaces_wd));
+  gpuCreateCopy_todevice_realw((void**)&mp->d_face_jacobian2Dw_wd, face_jacobian2Dw_wd, NGLL2*(*nfaces_wd));
+  // global indexing for wavefield discontinuity points (padded)
+  int size_padded = NGLL3_PADDED * (*nspec_wd);
+  gpuMalloc_int((void**) &mp->d_ibool_wd, size_padded);
+  gpuMemcpy2D_todevice_int(mp->d_ibool_wd, NGLL3_PADDED, ibool_wd, NGLL3, NGLL3, (*nspec_wd));
+
+  // allocate discontinuity field
+  int size = NDIM * (*nglob_wd);
+  gpuMalloc_realw((void**)&(mp->d_displ_wd),size);
+  gpuMalloc_realw((void**)&(mp->d_accel_wd),size);
+  size = NDIM * NGLL2 * (*nfaces_wd);
+  gpuMalloc_realw((void**)&(mp->d_traction_wd),size);
+}
 
 /* ----------------------------------------------------------------------------------------------- */
 
