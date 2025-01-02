@@ -639,6 +639,21 @@ void FC_FUNC_(prepare_fault_device,
                                     int* KELVIN_VOIGT_DAMPING,
                                     realw* Kelvin_Voigt_eta) {}
 
+void FC_FUNC_(prepare_wavefield_discontinuity_device,
+              PREPARE_WAVEFIELD_DISCONTINUITY_DEVICE)(
+                             long* Mesh_pointer,
+                             int* ispec_to_elem_wd,
+                             int* nglob_wd,
+                             int* nspec_wd,
+                             int* ibool_wd,
+                             int* boundary_to_iglob_wd,
+                             realw* mass_in_wd,
+                             int* nfaces_wd,
+                             int* face_ijk_wd,
+                             int* face_ispec_wd,
+                             realw* face_normal_wd,
+                             realw* face_jacobian2Dw_wd) {}
+
 void FC_FUNC_(prepare_cleanup_device,
               PREPARE_CLEANUP_DEVICE)(long* Mesh_pointer,
                                       int* ACOUSTIC_SIMULATION,
@@ -674,7 +689,6 @@ void FC_FUNC_(compute_smooth_gpu,
 void FC_FUNC_(get_smooth_gpu,
               GET_SMOOTH_gpu)(long * smooth_pointer,
                               realw * data_smooth) {}
-
 
 //
 // src/gpu/transfer_fields_cuda.cu
