@@ -752,6 +752,12 @@ void FC_FUNC_(transfer_pml_displ_from_device,
 void FC_FUNC_(transfer_pml_displ_to_device,
               TRANSFER_PML_DISPL_TO_DEVICE)(int* size, realw* PML_displ_old, realw* PML_displ_new, long* Mesh_pointer) {}
 
+void FC_FUNC_(transfer_wavefield_discontinuity_to_device,
+              TRANSFER_WAVEFIELD_DISCONTINUITY_TO_DEVICE)(
+                         int* size_point, int* size_face,
+                         realw* displ_wd, realw* accel_wd,
+                         realw* traction_wd, long* Mesh_pointer) {}
+
 void FC_FUNC_(transfer_b_rmemory_to_device,
               TRANSFER_B_RMEMORY_TO_DEVICE)(long* Mesh_pointer,
                                             realw* b_R_xx,realw* b_R_yy,realw* b_R_xy,
@@ -956,4 +962,15 @@ void FC_FUNC_(compute_seismograms_cuda,
                                         int* ACOUSTIC_SIMULATION,
                                         int* ELASTIC_SIMULATION,
                                         int* USE_TRICK_FOR_BETTER_PRESSURE) {}
+
+//
+// src/gpu/wavefield_discontinuity_cuda.cu
+//
+
+void FC_FUNC_(wavefield_discontinuity_add_traction_cuda,
+              WAVEFIELD_DISCONTINUITY_ADD_TRACTION_CUDA)(int* size_points,
+                                                         int* size_faces,
+                                                         long* Mesh_pointer){}
+
+
 
