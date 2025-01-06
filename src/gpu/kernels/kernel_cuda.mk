@@ -40,6 +40,7 @@ cuda_kernels_OBJS := \
 	$O/transfer_surface_to_host_kernel.cuda-kernel.o \
 	$O/UpdateDispVeloc_kernel.cuda-kernel.o \
 	$O/UpdatePotential_kernel.cuda-kernel.o \
+	$O/wavefield_discontinuity_kernel.cuda-kernel.o \
 	$(EMPTY_MACRO)
 
 

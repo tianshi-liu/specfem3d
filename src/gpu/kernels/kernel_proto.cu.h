@@ -111,6 +111,10 @@ Kernel_2_noatt_iso_impl(const int nb_blocks_to_compute,
                         realw_const_p d_wgllwgll_xy,realw_const_p d_wgllwgll_xz,realw_const_p d_wgllwgll_yz,
                         realw_const_p d_kappav,
                         realw_const_p d_muv,
+                        const int is_wavefield_discontinuity,
+                        realw_const_p d_displ_wd,
+                        const int* d_ispec_to_element_wd,
+                        const int* d_ibool_wd,
                         const int pml_conditions,
                         const int* d_is_CPML,
                         const int FORWARD_OR_ADJOINT);
@@ -525,6 +529,26 @@ __global__ void compute_coupling_elastic_ac_kernel(field* potential_dot_dot_acou
                                                     realw* displ,
                                                     int simulation_type,
                                                     int backward_simulation) ;
+
+
+//
+// src/gpu/kernels/wavefield_discontinuity_kernel.cu
+//
+
+__global__ void add_acceleration_discontinuity_kernel(
+                                  realw_const_p accel_wd,
+                                  realw_const_p mass_in_wd,
+                                  const int* boundary_to_iglob_wd,
+                                  const int size, realw* accel
+                                  );
+
+__global__ void add_traction_discontinuity_kernel(
+                                  realw_const_p traction_wd,
+                                  const int* face_ispec_wd,
+                                  const int* face_ijk_wd,
+                                  realw_const_p face_jacobian2Dw_wd,
+                                  const int* d_ibool,
+                                  const int size, realw* accel);
 
 
 //

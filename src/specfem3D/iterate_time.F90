@@ -40,12 +40,6 @@
   ! hdf5 i/o server
   use io_server_hdf5, only: do_io_start_idle,pass_info_to_io
 
-  !! solving wavefield discontinuity problem with non-split-node scheme
-  use wavefield_discontinuity_solver, only: &
-               read_mesh_databases_wavefield_discontinuity, &
-               open_wavefield_discontinuity_file, &
-               finalize_wavefield_discontinuity
-
   implicit none
 
   ! for EXACT_UNDOING_TO_DISK
@@ -214,13 +208,6 @@
   ! get MPI starting
   time_start = wtime()
 
-  !! solving wavefield discontinuity problem with
-  !! non-split-node scheme
-  if (IS_WAVEFIELD_DISCONTINUITY) then
-    call read_mesh_databases_wavefield_discontinuity()
-    call open_wavefield_discontinuity_file()
-  endif
-
   ! LTS
   if (LTS_MODE) then
     ! LTS steps through its own time iterations - for now
@@ -345,12 +332,6 @@
   !---- end of time iteration loop
   !
   enddo   ! end of main time loop
-
-  !! solving wavefield discontinuity problem with
-  !! non-split-node scheme
-  if (IS_WAVEFIELD_DISCONTINUITY) then
-    call finalize_wavefield_discontinuity()
-  endif
 
 ! goto point for LTS to finish time loop
 777 continue

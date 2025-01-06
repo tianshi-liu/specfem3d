@@ -43,7 +43,9 @@
 
   !! solving wavefield discontinuity problem with non-split-node scheme
   use wavefield_discontinuity_solver, only: &
-                 add_traction_discontinuity, read_wavefield_discontinuity_file
+                 add_traction_discontinuity, read_wavefield_discontinuity_file, &
+                 transfer_wavefield_discontinuity_to_GPU, &
+                 add_traction_discontinuity_GPU
 
   implicit none
 
@@ -112,6 +114,9 @@
   !! note that this is not called in case of adjoint simulation
   if (IS_WAVEFIELD_DISCONTINUITY .and. (SIMULATION_TYPE == 1)) then
     call read_wavefield_discontinuity_file()
+    if (GPU_MODE) then
+      call transfer_wavefield_discontinuity_to_GPU()
+    endif
   endif
 
 ! distinguishes two runs: for elements in contact with MPI interfaces, and elements within the partitions
@@ -284,7 +289,11 @@
       !! because these terms need to be used in MPI calls
       !! note that this is not called in case of adjoint simulation
       if (IS_WAVEFIELD_DISCONTINUITY .and. (SIMULATION_TYPE == 1)) then
-        call add_traction_discontinuity(accel, NGLOB_AB)
+        if (GPU_MODE) then
+          call add_traction_discontinuity_GPU()
+        else
+          call add_traction_discontinuity(accel, NGLOB_AB)
+        endif
       endif
     endif ! iphase
 

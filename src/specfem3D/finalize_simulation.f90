@@ -141,6 +141,10 @@
   use fault_solver_dynamic, only: SIMULATION_TYPE_DYN,BC_DYNFLT_free
   use fault_solver_kinematic, only: SIMULATION_TYPE_KIN,BC_KINFLT_free
 
+  !! solving wavefield discontinuity problem with non-split-node scheme
+  use wavefield_discontinuity_solver, only: &
+               finalize_wavefield_discontinuity
+
   implicit none
 
   ! from here on, no gpu data is needed anymore
@@ -149,6 +153,9 @@
 
   ! C-PML absorbing boundary conditions deallocates C_PML arrays
   if (PML_CONDITIONS) call pml_cleanup()
+
+  ! cleanup for wavefield discontinuity
+  if (IS_WAVEFIELD_DISCONTINUITY) call finalize_wavefield_discontinuity()
 
   ! free arrays
   ! mass matrices

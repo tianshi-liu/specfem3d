@@ -336,6 +336,28 @@ __device__  __forceinline__ void load_shared_memory_displ_visco(const int* tx, c
 
 /* ----------------------------------------------------------------------------------------------- */
 
+// add displacement discontinuity in case of wavefield discontinuity
+
+__device__ __forceinline__ void add_displacement_discontinuity_element(
+                                  const int* tx, const int* working_element,
+                                  realw_const_p d_displ_wd,
+                                  const int* ispec_to_elem_wd,
+                                  const int* ibool_wd,
+                                  realw* sh_displx,
+                                  realw* sh_disply,
+                                  realw* sh_displz) {
+  int ispec_wd = ispec_to_elem_wd[(*working_element)]-1;
+  if (ispec_wd >= 0) {
+    int offset = ispec_wd * NGLL3_PADDED + (*tx);
+    int iglob_wd = ibool_wd[offset]-1;
+    sh_displx[(*tx)] = sh_displx[(*tx)] + d_displ_wd[iglob_wd*3];
+    sh_disply[(*tx)] = sh_disply[(*tx)] + d_displ_wd[iglob_wd*3 + 1];
+    sh_displz[(*tx)] = sh_displz[(*tx)] + d_displ_wd[iglob_wd*3 + 2];
+  }
+}
+
+/* ----------------------------------------------------------------------------------------------- */
+
 // loads hprime into shared memory for element
 
 __device__  __forceinline__ void load_shared_memory_hprime(const int* tx,
@@ -738,6 +760,10 @@ Kernel_2_noatt_iso_impl(const int nb_blocks_to_compute,
                         realw_const_p d_wgllwgll_xy,realw_const_p d_wgllwgll_xz,realw_const_p d_wgllwgll_yz,
                         realw_const_p d_kappav,
                         realw_const_p d_muv,
+                        const int is_wavefield_discontinuity,
+                        realw_const_p d_displ_wd,
+                        const int* d_ispec_to_elem_wd,
+                        const int* d_ibool_wd,
                         const int pml_conditions,
                         const int* d_is_CPML,
                         const int FORWARD_OR_ADJOINT){
@@ -849,6 +875,9 @@ Kernel_2_noatt_iso_impl(const int nb_blocks_to_compute,
       load_shared_memory_displ<3>(&tx,&iglob,d_displ,sh_tempx,sh_tempy,sh_tempz);
     }else{
       load_shared_memory_displ<1>(&tx,&iglob,d_displ,sh_tempx,sh_tempy,sh_tempz);
+      if (is_wavefield_discontinuity) {
+        add_displacement_discontinuity_element(&tx,&working_element,d_displ_wd,d_ispec_to_elem_wd,d_ibool_wd,sh_tempx,sh_tempy,sh_tempz);
+      }
     }
   }
 
