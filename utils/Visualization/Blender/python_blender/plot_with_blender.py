@@ -55,15 +55,9 @@ from math import radians,atan2,sin,cos
 ## USER parameters
 
 ## renderer
-# render image size
+# full image size
 blender_img_resolution_X = 2400
 blender_img_resolution_Y = 1600
-
-# cycles rendering (for better glass effect of buildings)
-use_cycles_renderer = False
-
-## transparent sea-level plane
-use_transparent_sea_level_plane = False
 
 ###############################################################################################
 
@@ -75,11 +69,20 @@ DEGREE_TO_RAD = PI / 180.0
 mesh_scale_factor = 1.0
 mesh_origin = [0.0,0.0,0.0]
 
+## sea-level plane
+use_sea_level_plane = True
+
+## transparent sea-level plane
+use_transparent_sea_level_plane = False
+
 # baseline shift for buildings (to move above SPECFEM mesh)
 shift_building_baseline = 0.0  # 0.0==no-shift default, or e.g. --shift-building-baseline=0.0005
 
 # rendering output
 suppress_renderer_output = False
+
+# cycles rendering (for better glass effect of buildings)
+use_cycles_renderer = False
 
 # animation
 use_animation_dive_in = True
@@ -217,6 +220,295 @@ def convert_latlon_to_UTM(lat, lon):
     x_utm,y_utm = transformer_to_utm.transform(x,y)
 
     return x_utm,y_utm
+
+def setup_color_table(colormap, data_min, data_max):
+    # creates a color table
+    lut = vtk.vtkLookupTable()
+
+    lut.SetTableRange(data_min, data_max)
+    lut.SetNumberOfTableValues(256) # Set the number of table values
+
+    #lut.SetRampToLinear()
+    #lut.SetRampToSQRT()
+
+    # VTK by default maps the value range to colors from red to blue
+    # determine custom type
+    if colormap == 0:
+        print("  color map: default VTK")
+        # nothing to special to add, let's just vtk internally do it
+        # colormap is going from red to white to blue
+    elif colormap == 1:
+        # topo
+        print("  color map: topo")
+        colors_rgb = [
+            [0.3,  0.3,   0.3], # gray
+            [0.1,  0.1,   0.4], # blue
+            [0.2,  0.5,   0.2],
+            [0.25, 0.625, 0.5],
+            [0.0,  0.5,   0.25],
+            [0.5,  0.365, 0.0],
+            [0.75, 0.625, 0.25],
+            [1.0,  0.75,  0.625],
+            [1.0,  0.75,  0.5],
+            [1,    1,     1],   # white
+        ]
+
+    elif colormap == 2:
+        # Scientific Colour Map Categorical Palette
+        # https://www.fabiocrameri.ch/colourmaps/
+        # Crameri, F. (2018). Scientific colour maps. Zenodo. http://doi.org/10.5281/zenodo.1243862
+        print("  color map: lisbon")
+        # lisbon 10 Swatches
+        colors_rgb255 = [
+            [230, 229, 255],  #  lisbon-1 #E6E5FF
+            # or start with a less white color
+            #[200, 208, 237], #  lisbon-12 #C8D0ED
+            [155, 175, 211],  #  lisbon-29 #9BAFD3
+            [ 81, 119, 164],  #  lisbon-58 #5177A4
+            [ 30,  67, 104],  #  lisbon-86 #1E4368
+            [ 17,  30,  44],  #  lisbon-114 #111E2C
+            [ 39,  37,  26],  #  lisbon-143 #27251A
+            [ 87,  81,  52],  #  lisbon-171 #575134
+            [141, 133,  86],  #  lisbon-199 #8D8556
+            [201, 195, 144],  #  lisbon-228 #C9C390
+            [255, 255, 217],  #  lisbon-256 #FFFFD9
+        ]
+        # converts the colors from 0-255 range to 0-1 range
+        colors_rgb = [[comp / 255.0 for comp in color] for color in colors_rgb255]
+
+    elif colormap == 3:
+        # Scientific Colour Map Categorical Palette
+        # https://www.fabiocrameri.ch/colourmaps/
+        # Crameri, F. (2018). Scientific colour maps. Zenodo. http://doi.org/10.5281/zenodo.1243862
+        print("  color map: lajolla")
+        # lajolla 10 Swatches
+        colors_rgb255 = [
+            [ 25,  25,   0], #  lajolla-1 #191900
+            [ 51,  34,  15], # lajolla-29 #33220F
+            [ 91,  48,  35], #  lajolla-58 #5B3023
+            [143,  64,  61], #  lajolla-86 #8F403D
+            [199,  80,  75], #  lajolla-114 #C7504B
+            [224, 114,  79], #  lajolla-143 #E0724F
+            [231, 148,  82], #  lajolla-171 #E79452
+            [238, 181,  85], #  lajolla-199 #EEB555
+            [248, 223, 124], #  lajolla-228 #F8DF7C
+            [255, 254, 203], #  lajolla-256 #FFFECB
+        ]
+        # converts the colors from 0-255 range to 0-1 range
+        colors_rgb = [[comp / 255.0 for comp in color] for color in colors_rgb255]
+
+    elif colormap == 4:
+        # Scientific Colour Map Categorical Palette
+        # https://www.fabiocrameri.ch/colourmaps/
+        # Crameri, F. (2018). Scientific colour maps. Zenodo. http://doi.org/10.5281/zenodo.1243862
+        print("  color map: lipari")
+        # lipari 10 Swatches
+        colors_rgb255 = [
+            [  3,  19,  38], #  lipari-1 #031326
+            [ 19,  56,  90], #  lipari-29 #13385A
+            [ 71,  88, 122], #  lipari-58 #47587A
+            [107,  95, 118], #  lipari-86 #6B5F76
+            [142,  97, 108], #  lipari-114 #8E616C
+            [188, 100,  97], #  lipari-143 #BC6461
+            [229, 123,  98], #  lipari-171 #E57B62
+            [231, 162, 121], #  lipari-199 #E7A279
+            [233, 201, 159], #  lipari-228 #E9C99F
+            [253, 245, 218], #  lipari-256 #FDF5DA
+        ]
+        # converts the colors from 0-255 range to 0-1 range
+        colors_rgb = [[comp / 255.0 for comp in color] for color in colors_rgb255]
+
+    elif colormap == 5:
+        # Scientific Colour Map Categorical Palette
+        # https://www.fabiocrameri.ch/colourmaps/
+        # Crameri, F. (2018). Scientific colour maps. Zenodo. http://doi.org/10.5281/zenodo.1243862
+        print("  color map: davos")
+        # davos 10 Swatches
+        colors_rgb255 = [
+            [  0,   5,  74], #  davos-1 #00054A
+            [ 17,  44, 113], #  davos-29 #112C71
+            [ 41,  82, 145], #  davos-58 #295291
+            [ 67, 112, 157], #  davos-86 #43709D
+            [ 94, 133, 152], #  davos-114 #5E8598
+            [121, 150, 141], #  davos-143 #79968D
+            [153, 173, 136], #  davos-171 #99AD88
+            [201, 210, 158], #  davos-199 #C9D29E
+            [243, 243, 210], #  davos-228 #F3F3D2
+            [254, 254, 254], #  davos-256 #FEFEFE
+        ]
+        # converts the colors from 0-255 range to 0-1 range
+        colors_rgb = [[comp / 255.0 for comp in color] for color in colors_rgb255]
+
+    elif colormap == 6:
+        # Scientific Colour Map Categorical Palette
+        # https://www.fabiocrameri.ch/colourmaps/
+        # Crameri, F. (2018). Scientific colour maps. Zenodo. http://doi.org/10.5281/zenodo.1243862
+        print("  color map: turku")
+        # turku 10 Swatches
+        colors_rgb255 = [
+            [  0,   0,   0], #  turku-1 #000000
+            [ 36,  36,  32], #  turku-29 #242420
+            [ 66,  66,  53], #  turku-58 #424235
+            [ 95,  95,  68], #  turku-86 #5F5F44
+            [126, 124,  82], #  turku-114 #7E7C52
+            [169, 153, 101], #  turku-143 #A99965
+            [207, 166, 124], #  turku-171 #CFA67C
+            [234, 173, 152], #  turku-199 #EAAD98
+            [252, 199, 195], #  turku-228 #FCC7C3
+            [255, 230, 230], #  turku-256 #FFE6E6
+        ]
+        # converts the colors from 0-255 range to 0-1 range
+        colors_rgb = [[comp / 255.0 for comp in color] for color in colors_rgb255]
+
+    elif colormap == 7:
+        # Scientific Colour Map Categorical Palette
+        # https://www.fabiocrameri.ch/colourmaps/
+        # Crameri, F. (2018). Scientific colour maps. Zenodo. http://doi.org/10.5281/zenodo.1243862
+        print("  color map: berlin")
+        # berlin 10 Swatches
+        colors_rgb255 = [
+            [158, 176, 255], #  berlin-1 #9EB0FF
+            [ 91, 164, 219], #  berlin-29 #5BA4DB
+            [ 45, 117, 151], #  berlin-58 #2D7597
+            [ 26,  66,  86], #  berlin-86 #1A4256
+            [ 17,  25,  30], #  berlin-114 #11191E
+            [ 40,  13,   1], #  berlin-143 #280D01
+            [ 80,  24,   3], #  berlin-171 #501803
+            [138,  63,  42], #  berlin-199 #8A3F2A
+            [196, 117, 106], #  berlin-228 #C4756A
+            [255, 173, 173], #  berlin-256 #FFADAD
+        ]
+        # converts the colors from 0-255 range to 0-1 range
+        colors_rgb = [[comp / 255.0 for comp in color] for color in colors_rgb255]
+
+    elif colormap == 8:
+        # Scientific Colour Map Categorical Palette
+        # https://www.fabiocrameri.ch/colourmaps/
+        # Crameri, F. (2018). Scientific colour maps. Zenodo. http://doi.org/10.5281/zenodo.1243862
+        print("  color map: grayC")
+        colors_rgb255 = [
+            [0,   0,   0],  #  grayC-1 #000000
+            [35,  35,  35], #  grayC-29 #232323
+            [61,  61,  61], #  grayC-58 #3D3D3D
+            [86,  86,  86], #  grayC-86 #565656
+            [108, 108, 108],#  grayC-114 #6C6C6C
+            [130, 130, 130],#  grayC-143 #828282
+            [154, 154, 154],#  grayC-171 #9A9A9A
+            [182, 182, 182],#  grayC-199 #B6B6B6
+            [216, 216, 216],#  grayC-228 #D8D8D8
+            [255, 255, 255],#  grayC-256 #FFFFFF
+        ]
+        # converts the colors from 0-255 range to 0-1 range
+        colors_rgb = [[comp / 255.0 for comp in color] for color in colors_rgb255]
+
+    elif colormap == 9:
+        # custom snow
+        print("  color map: snow")
+        colors_rgb255 = [
+            [204, 204, 204], # gray
+            [153, 178, 204],
+            [ 71,  88, 122], #  lipari-58 #47587A
+            [107,  95, 118], #  lipari-86 #6B5F76
+            [142,  97, 108], #  lipari-114 #8E616C
+            [188, 100,  97], #  lipari-143 #BC6461
+            [229, 123,  98], #  lipari-171 #E57B62
+            [231, 162, 121], #  lipari-199 #E7A279
+            [255, 229, 204],
+            [255, 255, 255], # white
+        ]
+        # converts the colors from 0-255 range to 0-1 range
+        colors_rgb = [[comp / 255.0 for comp in color] for color in colors_rgb255]
+
+    elif colormap == 10:
+        # custom shakeGreen
+        print("  color map: shakeGreen")
+        colors_rgb = [
+            [0.8,  0.8,   0.8], # gray
+            [0.5,  0.5,   0.4],
+            [0.5,  0.4,   0.2],
+            [0.6,  0.6,   0.0], # green
+            [0.72, 0.25,  0.0 ], # orange
+            [0.81, 0.5,   0.0 ],
+            [0.9,  0.74,  0.0 ], # yellow
+            [1.0,  0.99,  0.0 ],
+            [1.0,  0.99,  0.25],
+            [1.0,  1.0,   1.0 ],  # white
+        ]
+
+    elif colormap == 11:
+        # custom shakeRed
+        print("  color map: shakeRed")
+        colors_rgb = [
+            [0.85, 0.85,  0.85], # gray
+            [0.7,  0.7,   0.7 ],
+            [0.5,  0.5,   0.5 ],
+            [0.63, 0.0,   0.0 ], # red
+            [0.72, 0.25,  0.0 ], # orange
+            [0.81, 0.5,   0.0 ],
+            [0.9,  0.74,  0.0 ], # yellow
+            [1.0,  0.99,  0.0 ],
+            [1.0,  0.99,  0.25],
+            [1.0,  1.0,   1.0 ],  # white
+        ]
+
+    elif colormap == 12:
+        # custom shakeUSGS
+        # taken from a shakemap plot of the USGS
+        # https://earthquake.usgs.gov/earthquakes/eventpage/us6000lqf9/shakemap/intensity
+        print("  color map: shakeUSGS")
+        colors_rgb = [
+            [1.0,  1.0,  1.0 ], # I: white
+            [0.8,  0.8,  0.8 ],
+            [0.77, 0.81, 1.0 ], # II-III : light purple
+            [0.5,  1.0,  0.98], # IV: turquoise
+            [0.5,  1.0,  0.54], # V : green
+            [1.0,  0.98, 0.0 ], # VI : yellow
+            [1.0,  0.77, 0.0 ], # VII : orange
+            [0.99, 0.52, 0.0 ], # VIII: darkorange
+            [0.98, 0.0,  0.0 ], # IX : red
+            [0.78, 0.0,  0.0 ], # X+ : darkred
+        ]
+
+    elif colormap == 13:
+        # custom shakeUSGSgray
+        # starts with darker gray than the default USGS
+        print("  color map: shakeUSGSgray")
+        colors_rgb = [
+            [0.8,  0.8,  0.8 ], # gray
+            [0.5,  0.5,  0.5 ],
+            [0.77, 0.81, 1.0 ], # II-III : light purple
+            [0.5,  1.0,  0.98], # IV: turquoise
+            [0.5,  1.0,  0.54], # V : green
+            [1.0,  0.98, 0.0 ], # VI : yellow
+            [1.0,  0.77, 0.0 ], # VII : orange
+            [0.99, 0.52, 0.0 ], # VIII: darkorange
+            [0.98, 0.0,  0.0 ],  # IX : red
+            [0.5, 0.0,  0.0 ],  # X+ : darkred
+        ]
+
+    else:
+        print("Warning: colormap with type {} is not supported, exiting...".format(colormap))
+        sys.exit(1)
+
+    # sets lookup table entries
+    if colormap != 0:
+        # Create a vtkColorTransferFunction
+        color_transfer_func = vtk.vtkColorTransferFunction()
+        # add specific scalar values in the color transfer function
+        for i, color in enumerate(colors_rgb):
+            val = i / (len(colors_rgb) - 1.0)
+            color_transfer_func.AddRGBPoint(val, color[0], color[1], color[2])
+        # Calculate the color values for the lookup table by interpolating from the color transfer function
+        for i in range(256):
+            scalar = i / 255.0  # Normalized scalar value from 0 to 1
+            color = color_transfer_func.GetColor(scalar)
+            lut.SetTableValue(i, color[0], color[1], color[2], 1.0)
+        print("")
+
+    # build lookup table
+    lut.Build()
+
+    return lut
 
 
 def convert_vtk_to_obj(vtk_file: str="", colormap: int=0, color_max=None) -> str:
@@ -502,288 +794,8 @@ def convert_vtk_to_obj(vtk_file: str="", colormap: int=0, color_max=None) -> str
     #
     # set lookup table for depth values to colors
     if colors_array:
-        lut = vtk.vtkLookupTable()
-        lut.SetTableRange(data_min, data_max)
-        lut.SetNumberOfTableValues(256) # Set the number of table values
-        #lut.SetRampToLinear()
-        #lut.SetRampToSQRT()
-
-        # VTK by default maps the value range to colors from red to blue
-        # determine custom type
-        if colormap == 0:
-            print("  color map: default VTK")
-            # nothing to special to add, let's just vtk internally do it
-            # colormap is going from red to white to blue
-        elif colormap == 1:
-            # topo
-            print("  color map: topo")
-            colors_rgb = [
-                [0.3,  0.3,   0.3], # gray
-                [0.1,  0.1,   0.4], # blue
-                [0.2,  0.5,   0.2],
-                [0.25, 0.625, 0.5],
-                [0.0,  0.5,   0.25],
-                [0.5,  0.365, 0.0],
-                [0.75, 0.625, 0.25],
-                [1.0,  0.75,  0.625],
-                [1.0,  0.75,  0.5],
-                [1,    1,     1],   # white
-            ]
-
-        elif colormap == 2:
-            # Scientific Colour Map Categorical Palette
-            # https://www.fabiocrameri.ch/colourmaps/
-            # Crameri, F. (2018). Scientific colour maps. Zenodo. http://doi.org/10.5281/zenodo.1243862
-            print("  color map: lisbon")
-            # lisbon 10 Swatches
-            colors_rgb255 = [
-                [230, 229, 255],  #  lisbon-1 #E6E5FF
-                # or start with a less white color
-                #[200, 208, 237], #  lisbon-12 #C8D0ED
-                [155, 175, 211],  #  lisbon-29 #9BAFD3
-                [ 81, 119, 164],  #  lisbon-58 #5177A4
-                [ 30,  67, 104],  #  lisbon-86 #1E4368
-                [ 17,  30,  44],  #  lisbon-114 #111E2C
-                [ 39,  37,  26],  #  lisbon-143 #27251A
-                [ 87,  81,  52],  #  lisbon-171 #575134
-                [141, 133,  86],  #  lisbon-199 #8D8556
-                [201, 195, 144],  #  lisbon-228 #C9C390
-                [255, 255, 217],  #  lisbon-256 #FFFFD9
-            ]
-            # converts the colors from 0-255 range to 0-1 range
-            colors_rgb = [[comp / 255.0 for comp in color] for color in colors_rgb255]
-
-        elif colormap == 3:
-            # Scientific Colour Map Categorical Palette
-            # https://www.fabiocrameri.ch/colourmaps/
-            # Crameri, F. (2018). Scientific colour maps. Zenodo. http://doi.org/10.5281/zenodo.1243862
-            print("  color map: lajolla")
-            # lajolla 10 Swatches
-            colors_rgb255 = [
-                [ 25,  25,   0], #  lajolla-1 #191900
-                [ 51,  34,  15], # lajolla-29 #33220F
-                [ 91,  48,  35], #  lajolla-58 #5B3023
-                [143,  64,  61], #  lajolla-86 #8F403D
-                [199,  80,  75], #  lajolla-114 #C7504B
-                [224, 114,  79], #  lajolla-143 #E0724F
-                [231, 148,  82], #  lajolla-171 #E79452
-                [238, 181,  85], #  lajolla-199 #EEB555
-                [248, 223, 124], #  lajolla-228 #F8DF7C
-                [255, 254, 203], #  lajolla-256 #FFFECB
-            ]
-            # converts the colors from 0-255 range to 0-1 range
-            colors_rgb = [[comp / 255.0 for comp in color] for color in colors_rgb255]
-
-        elif colormap == 4:
-            # Scientific Colour Map Categorical Palette
-            # https://www.fabiocrameri.ch/colourmaps/
-            # Crameri, F. (2018). Scientific colour maps. Zenodo. http://doi.org/10.5281/zenodo.1243862
-            print("  color map: lipari")
-            # lipari 10 Swatches
-            colors_rgb255 = [
-                [  3,  19,  38], #  lipari-1 #031326
-                [ 19,  56,  90], #  lipari-29 #13385A
-                [ 71,  88, 122], #  lipari-58 #47587A
-                [107,  95, 118], #  lipari-86 #6B5F76
-                [142,  97, 108], #  lipari-114 #8E616C
-                [188, 100,  97], #  lipari-143 #BC6461
-                [229, 123,  98], #  lipari-171 #E57B62
-                [231, 162, 121], #  lipari-199 #E7A279
-                [233, 201, 159], #  lipari-228 #E9C99F
-                [253, 245, 218], #  lipari-256 #FDF5DA
-            ]
-            # converts the colors from 0-255 range to 0-1 range
-            colors_rgb = [[comp / 255.0 for comp in color] for color in colors_rgb255]
-
-        elif colormap == 5:
-            # Scientific Colour Map Categorical Palette
-            # https://www.fabiocrameri.ch/colourmaps/
-            # Crameri, F. (2018). Scientific colour maps. Zenodo. http://doi.org/10.5281/zenodo.1243862
-            print("  color map: davos")
-            # davos 10 Swatches
-            colors_rgb255 = [
-                [  0,   5,  74], #  davos-1 #00054A
-                [ 17,  44, 113], #  davos-29 #112C71
-                [ 41,  82, 145], #  davos-58 #295291
-                [ 67, 112, 157], #  davos-86 #43709D
-                [ 94, 133, 152], #  davos-114 #5E8598
-                [121, 150, 141], #  davos-143 #79968D
-                [153, 173, 136], #  davos-171 #99AD88
-                [201, 210, 158], #  davos-199 #C9D29E
-                [243, 243, 210], #  davos-228 #F3F3D2
-                [254, 254, 254], #  davos-256 #FEFEFE
-            ]
-            # converts the colors from 0-255 range to 0-1 range
-            colors_rgb = [[comp / 255.0 for comp in color] for color in colors_rgb255]
-
-        elif colormap == 6:
-            # Scientific Colour Map Categorical Palette
-            # https://www.fabiocrameri.ch/colourmaps/
-            # Crameri, F. (2018). Scientific colour maps. Zenodo. http://doi.org/10.5281/zenodo.1243862
-            print("  color map: turku")
-            # turku 10 Swatches
-            colors_rgb255 = [
-                [  0,   0,   0], #  turku-1 #000000
-                [ 36,  36,  32], #  turku-29 #242420
-                [ 66,  66,  53], #  turku-58 #424235
-                [ 95,  95,  68], #  turku-86 #5F5F44
-                [126, 124,  82], #  turku-114 #7E7C52
-                [169, 153, 101], #  turku-143 #A99965
-                [207, 166, 124], #  turku-171 #CFA67C
-                [234, 173, 152], #  turku-199 #EAAD98
-                [252, 199, 195], #  turku-228 #FCC7C3
-                [255, 230, 230], #  turku-256 #FFE6E6
-            ]
-            # converts the colors from 0-255 range to 0-1 range
-            colors_rgb = [[comp / 255.0 for comp in color] for color in colors_rgb255]
-
-        elif colormap == 7:
-            # Scientific Colour Map Categorical Palette
-            # https://www.fabiocrameri.ch/colourmaps/
-            # Crameri, F. (2018). Scientific colour maps. Zenodo. http://doi.org/10.5281/zenodo.1243862
-            print("  color map: berlin")
-            # berlin 10 Swatches
-            colors_rgb255 = [
-                [158, 176, 255], #  berlin-1 #9EB0FF
-                [ 91, 164, 219], #  berlin-29 #5BA4DB
-                [ 45, 117, 151], #  berlin-58 #2D7597
-                [ 26,  66,  86], #  berlin-86 #1A4256
-                [ 17,  25,  30], #  berlin-114 #11191E
-                [ 40,  13,   1], #  berlin-143 #280D01
-                [ 80,  24,   3], #  berlin-171 #501803
-                [138,  63,  42], #  berlin-199 #8A3F2A
-                [196, 117, 106], #  berlin-228 #C4756A
-                [255, 173, 173], #  berlin-256 #FFADAD
-            ]
-            # converts the colors from 0-255 range to 0-1 range
-            colors_rgb = [[comp / 255.0 for comp in color] for color in colors_rgb255]
-
-        elif colormap == 8:
-            # Scientific Colour Map Categorical Palette
-            # https://www.fabiocrameri.ch/colourmaps/
-            # Crameri, F. (2018). Scientific colour maps. Zenodo. http://doi.org/10.5281/zenodo.1243862
-            print("  color map: grayC")
-            colors_rgb255 = [
-                [0,   0,   0],  #  grayC-1 #000000
-                [35,  35,  35], #  grayC-29 #232323
-                [61,  61,  61], #  grayC-58 #3D3D3D
-                [86,  86,  86], #  grayC-86 #565656
-                [108, 108, 108],#  grayC-114 #6C6C6C
-                [130, 130, 130],#  grayC-143 #828282
-                [154, 154, 154],#  grayC-171 #9A9A9A
-                [182, 182, 182],#  grayC-199 #B6B6B6
-                [216, 216, 216],#  grayC-228 #D8D8D8
-                [255, 255, 255],#  grayC-256 #FFFFFF
-            ]
-            # converts the colors from 0-255 range to 0-1 range
-            colors_rgb = [[comp / 255.0 for comp in color] for color in colors_rgb255]
-
-        elif colormap == 9:
-            # custom snow
-            print("  color map: snow")
-            colors_rgb255 = [
-                [204, 204, 204], # gray
-                [153, 178, 204],
-                [ 71,  88, 122], #  lipari-58 #47587A
-                [107,  95, 118], #  lipari-86 #6B5F76
-                [142,  97, 108], #  lipari-114 #8E616C
-                [188, 100,  97], #  lipari-143 #BC6461
-                [229, 123,  98], #  lipari-171 #E57B62
-                [231, 162, 121], #  lipari-199 #E7A279
-                [255, 229, 204],
-                [255, 255, 255], # white
-            ]
-            # converts the colors from 0-255 range to 0-1 range
-            colors_rgb = [[comp / 255.0 for comp in color] for color in colors_rgb255]
-
-        elif colormap == 10:
-            # custom shakeGreen
-            print("  color map: shakeGreen")
-            colors_rgb = [
-                [0.8,  0.8,   0.8], # gray
-                [0.5,  0.5,   0.4],
-                [0.5,  0.4,   0.2],
-                [0.6,  0.6,   0.0], # green
-                [0.72, 0.25,  0.0 ], # orange
-                [0.81, 0.5,   0.0 ],
-                [0.9,  0.74,  0.0 ], # yellow
-                [1.0,  0.99,  0.0 ],
-                [1.0,  0.99,  0.25],
-                [1.0,  1.0,   1.0 ],  # white
-            ]
-
-        elif colormap == 11:
-            # custom shakeRed
-            print("  color map: shakeRed")
-            colors_rgb = [
-                [0.85, 0.85,  0.85], # gray
-                [0.7,  0.7,   0.7 ],
-                [0.5,  0.5,   0.5 ],
-                [0.63, 0.0,   0.0 ], # red
-                [0.72, 0.25,  0.0 ], # orange
-                [0.81, 0.5,   0.0 ],
-                [0.9,  0.74,  0.0 ], # yellow
-                [1.0,  0.99,  0.0 ],
-                [1.0,  0.99,  0.25],
-                [1.0,  1.0,   1.0 ],  # white
-            ]
-
-        elif colormap == 12:
-            # custom shakeUSGS
-            # taken from a shakemap plot of the USGS
-            # https://earthquake.usgs.gov/earthquakes/eventpage/us6000lqf9/shakemap/intensity
-            print("  color map: shakeUSGS")
-            colors_rgb = [
-                [1.0,  1.0,  1.0 ], # I: white
-                [0.8,  0.8,  0.8 ],
-                [0.77, 0.81, 1.0 ], # II-III : light purple
-                [0.5,  1.0,  0.98], # IV: turquoise
-                [0.5,  1.0,  0.54], # V : green
-                [1.0,  0.98, 0.0 ], # VI : yellow
-                [1.0,  0.77, 0.0 ], # VII : orange
-                [0.99, 0.52, 0.0 ], # VIII: darkorange
-                [0.98, 0.0,  0.0 ], # IX : red
-                [0.78, 0.0,  0.0 ], # X+ : darkred
-            ]
-
-        elif colormap == 13:
-            # custom shakeUSGSgray
-            # starts with darker gray than the default USGS
-            print("  color map: shakeUSGSgray")
-            colors_rgb = [
-                [0.8,  0.8,  0.8 ], # gray
-                [0.5,  0.5,  0.5 ],
-                [0.77, 0.81, 1.0 ], # II-III : light purple
-                [0.5,  1.0,  0.98], # IV: turquoise
-                [0.5,  1.0,  0.54], # V : green
-                [1.0,  0.98, 0.0 ], # VI : yellow
-                [1.0,  0.77, 0.0 ], # VII : orange
-                [0.99, 0.52, 0.0 ], # VIII: darkorange
-                [0.98, 0.0,  0.0 ],  # IX : red
-                [0.5, 0.0,  0.0 ],  # X+ : darkred
-            ]
-
-        else:
-            print("Warning: colormap with type {} is not supported, exiting...".format(colormap))
-            sys.exit(1)
-
-        # sets lookup table entries
-        if colormap != 0:
-            # Create a vtkColorTransferFunction
-            color_transfer_func = vtk.vtkColorTransferFunction()
-            # add specific scalar values in the color transfer function
-            for i, color in enumerate(colors_rgb):
-                val = i / (len(colors_rgb) - 1.0)
-                color_transfer_func.AddRGBPoint(val, color[0], color[1], color[2])
-            # Calculate the color values for the lookup table by interpolating from the color transfer function
-            for i in range(256):
-                scalar = i / 255.0  # Normalized scalar value from 0 to 1
-                color = color_transfer_func.GetColor(scalar)
-                lut.SetTableValue(i, color[0], color[1], color[2], 1.0)
-            print("")
-
-        # build lookup table
-        lut.Build()
+        # assign color table
+        lut = setup_color_table(colormap, data_min, data_max)
         colors_array.SetLookupTable(lut)
 
     # Write the data to PLY format
@@ -1489,8 +1501,11 @@ def add_plane() -> None:
     """
     adds a plane at sea-level
     """
-    global use_transparent_sea_level_plane
+    global use_sea_level_plane,use_transparent_sea_level_plane
     global close_up_view
+
+    # checks if anything to do
+    if not use_sea_level_plane: return
 
     print("  adding sea-level plane")
     # Create a mesh plane (to capture shadows and indicate sea level)
@@ -2192,8 +2207,13 @@ def plot_with_blender(vtk_file: str="", image_title: str="", colormap: int=0, co
 
 
 def usage() -> None:
-    print("usage: ./plot_with_blender.py [--vtk_file=file] [--title=my_mesh_name] [--colormap=val] [--color-max=val] [--buildings=file]")
-    print("                              [--with-cycles/--no-cycles] [--closeup] [--small] [--anim] [--suppress] [--help]")
+    print("usage: ./plot_with_blender.py [--vtk_file=file] [--title=my_mesh_name] [--colormap=val] [--color-max=val]")
+    print("                              [--buildings=file] [--shift-buildings=val]")
+    print("                              [--locations=file] [--utm-zone=ZoneNumber]")
+    print("                              [--no-sea-level] [--transparent-sea-level]")
+    print("                              [--centered] [--closeup] [--small] [--anim]")
+    print("                              [--with-cycles/--no-cycles] [--suppress]")
+    print("                              [--help]")
     print("  with")
     print("     --vtk_file                - input mesh file (.vtk, .vtu, .inp)")
     print("     --title                   - title text (added to image rendering)")
@@ -2202,14 +2222,20 @@ def usage() -> None:
     print("                                                10==shakeGreen /11==shakeRed  /12==shakeUSGS /13==shakeUSGSgray")
     print("                                                 (default is shakeUSGSgray for shakemaps)")
     print("     --color-max               - fixes maximum value of colormap for moviedata to val, e.g., 1.e-7)")
+    print("")
     print("     --buildings               - mesh file (.ply) with buildings to visualize for the area")
-    print("     --with-cycles/--no-cycles - turns on/off CYCLES renderer (default is off, using BLENDER_EEVEE)")
+    print("     --shift-buildings         - moves buildings up, e.g., a factor 0.0005 (default is no shift==0.0)")
+    print("     --locations               - file with location labels (using a format: #name #lat #lon)")
+    print("     --utm_zone                - use specified UTM zone number (1-60) with (+) for Northern (-) for Southern hemisphere (e.g., -58)")
+    print("     --no-sea-level            - turns off sea-level plane")
+    print("     --transparent-sea-level   - turns on transparency for sea-level plane")
+    print("")
     print("     --centered                - centered camera view (looking from top straight down)")
     print("     --closeup                 - sets camera view closer to center of model")
-    print("     --transparent-sea-level   - turns on transparency for sea-level plane")
     print("     --small                   - turns on small images size (400x600px) for preview")
-    print("     --shift-buildings         - moves buildings up, e.g., a factor 0.0005 (default is no shift==0.0)")
     print("     --anim                    - turns on movie animation (dive-in and rotation by default, use --no-rotation or --no-dive-in to turn off)")
+    print("")
+    print("     --with-cycles/--no-cycles - turns on/off CYCLES renderer (default is off, using BLENDER_EEVEE)")
     print("     --suppress                - suppress renderer output (default is off)")
     print("     --help                    - this help for usage...")
     sys.exit(1)
@@ -2263,6 +2289,8 @@ if __name__ == '__main__':
             suppress_renderer_output = True
         elif "--title=" in arg:
             image_title = arg.split('=')[1]
+        elif "--no-sea-level" in arg:
+            use_sea_level_plane = False
         elif "--transparent-sea-level" in arg:
             use_transparent_sea_level_plane = True
         elif "--vtk_file=" in arg:
