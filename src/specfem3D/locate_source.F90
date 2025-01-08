@@ -699,7 +699,7 @@
 
     ! user info for many source points
     if (.not. SHOW_DETAILS_LOCATE_SOURCE .and. NSOURCES >= 10) then
-      write(IMAIN,*) 'for all following ',NSOURCES-1,'sources we will suppress the details to avoid getting to long here...'
+      write(IMAIN,*) 'for all following sources we will suppress the detail infos to avoid getting to long here...'
       write(IMAIN,*)
       write(IMAIN,*) 'In case you wish to see detailed source informations for all source points, consider turning on the'
       write(IMAIN,*) 'parameter SHOW_DETAILS_LOCATE_SOURCE in setup/constants.h'
@@ -758,6 +758,12 @@
         write(IMAIN,*) '     total scalar moment M0 = ', M0,' dyne-cm'
         write(IMAIN,*) '  total moment magnitude Mw = ', Mw
       endif
+      write(IMAIN,*)
+      ! statistics
+      write(IMAIN,*) '  source ranges:'
+      write(IMAIN,*) '    depth        : min/max = ',sngl(minval(depth(:))/1000.d0),'/',sngl(maxval(depth(:))/1000.d0),' km'
+      write(IMAIN,*) '    half duration: min/max = ',sngl(minval(hdur(:))),'/',sngl(maxval(hdur(:)))
+      write(IMAIN,*) '    time shift   : min/max = ',sngl(minval(tshift_src(:))),'/',sngl(maxval(tshift_src(:)))
       write(IMAIN,*)
       write(IMAIN,*) '********************'
       call flush_IMAIN()
