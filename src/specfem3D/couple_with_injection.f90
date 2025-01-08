@@ -3328,7 +3328,7 @@ contains
   ! check integer size limit: size of reclen must fit onto an 4-byte integer
   if (reclen > int(2147483646.0 / 2)) then
     print *,'reclen needed exceeds integer 4-byte limit: ',reclen
-    print *,'  ',reclen,' custom_real/ndim/npoints_local = ',CUSTOM_REAL, NDIM, npoints_local
+    print *,'  ',reclen,' CUSTOM_REAL/ndim/npoints_local = ',CUSTOM_REAL, NDIM, npoints_local
     print *,'bit size Fortran: ',bit_size(reclen)
     call exit_MPI(myrank,"Error reclen integer limit")
   endif
