@@ -166,12 +166,12 @@ contains
   subroutine prepare_wavefield_discontinuity_GPU()
   use specfem_par, only: Mesh_pointer
   implicit none
-  call prepare_wavefield_discontinuity_device(Mesh_pointer, ispec_to_elem_wd,&
-                                                nglob_wd, nspec_wd, ibool_wd,&
-                                                boundary_to_iglob_wd,&
-                                                mass_in_wd,&
-                                                nfaces_wd, face_ijk_wd,&
-                                                face_ispec_wd, face_normal_wd,&
+  call prepare_wavefield_discontinuity_device(Mesh_pointer, ispec_to_elem_wd, &
+                                                nglob_wd, nspec_wd, ibool_wd, &
+                                                boundary_to_iglob_wd, &
+                                                mass_in_wd, &
+                                                nfaces_wd, face_ijk_wd, &
+                                                face_ispec_wd, face_normal_wd, &
                                                 face_jacobian2dw_wd)
   end subroutine prepare_wavefield_discontinuity_GPU
 
